@@ -65,7 +65,7 @@ export async function analyzeStatement(sql: string, engine: Engine): Promise<Fac
     walk(side, (n) => {
       const rv = n.RangeVar;
       if (!rv?.relname) return;
-      if (!rv.schemaname && ctes.has(rv.relname)) {
+      if (!rv.schemaname && ctes.has(rv.relname) && !mutations.has("skip-cte-references")) {
         if (!visitedCtes.has(rv.relname)) {
           visitedCtes.add(rv.relname);
           collect(ctes.get(rv.relname)!);
@@ -86,7 +86,8 @@ export async function analyzeStatement(sql: string, engine: Engine): Promise<Fac
   });
 
   // Set operations that feed rows into the output. Those inside expressions (IN (... UNION ...))
-  // do not.
+  // do not. Postgres 16-17 report no column origin through a set operation, so this is defense in
+  // depth; tests/postgres-behavior.test.ts pins that behavior.
   walk(
     stmt,
     (n, inExpression) => {

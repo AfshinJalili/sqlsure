@@ -1,0 +1,415 @@
+{
+  "date": "2026-10-24T22:41:02.265Z",
+  "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "thresholds": {
+    "soundnessViolations": 0,
+    "breadthPercent": 90,
+    "precisionPercent": 85,
+    "featuresPercent": 100,
+    "diagnosticsPercent": 100,
+    "mutationKillPercent": 100
+  },
+  "soundness": {
+    "violations": [],
+    "valuesChecked": 8455,
+    "rowsChecked": 2662,
+    "queriesExecuted": 55,
+    "schemas": 2
+  },
+  "precision": {
+    "labeledNonnull": 99,
+    "inferredNonnull": 86,
+    "percent": 86.86868686868686,
+    "misses": [
+      "shop.categoryTree.id",
+      "shop.categoryTree.name",
+      "shop.productSummary.id",
+      "shop.productSummary.name",
+      "shop.productSummary.review_count",
+      "traps.viewColumns.id",
+      "traps.viewColumns.label",
+      "traps.domainAndEnumArray.total",
+      "traps.selfJoin.child_label",
+      "traps.naturalJoinFull.id",
+      "traps.naturalJoinFull.label",
+      "traps.castOfColumn.id_text",
+      "traps.castOfColumn.short"
+    ]
+  },
+  "breadth": {
+    "percent": null,
+    "typed": 0,
+    "acceptedByPostgres": 0,
+    "refusedByDesign": 0,
+    "corpus": null
+  },
+  "features": {
+    "features": [
+      {
+        "id": "aggregates",
+        "description": "Aggregates and windows: count/row_number/EXISTS/COALESCE(…, literal) are non-null; sum/max/lag are nullable",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "id": "arrays",
+        "description": "Arrays (elements may be NULL); arrays of enums come back as text, typed string",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "id": "cte",
+        "description": "CTEs and set operations (UNION output is conservatively nullable)",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "id": "enums",
+        "description": "Enums become string-literal unions, for columns and parameters",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "id": "joins",
+        "description": "Joins: INNER keeps NOT NULL, LEFT/RIGHT/FULL/LATERAL make the outer side nullable",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "id": "json",
+        "description": "json/jsonb as a Json value; JSON parameters take objects or pre-stringified JSON",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "id": "meta",
+        "description": "Every query function carries its final SQL and parameter order",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "id": "naming",
+        "description": "Schema-qualified tables, quoted identifiers, views (view columns are conservatively nullable)",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "id": "params",
+        "description": "Named :params (reused names are one parameter); casts, strings, dollar quotes and comments are left alone",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "id": "scalars",
+        "description": "Scalar types as node-postgres returns them (int8/numeric as string, dates as Date, bytea as Buffer, interval, point)",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "id": "select",
+        "description": "SELECT with NOT NULL and nullable columns; :one returns Row | null",
+        "passed": true,
+        "errors": []
+      },
+      {
+        "id": "writes",
+        "description": "INSERT/UPDATE … RETURNING, :exec (void) and :execrows (affected row count)",
+        "passed": true,
+        "errors": []
+      }
+    ],
+    "negativeControlFailed": true,
+    "ms": 1293.6378019999997
+  },
+  "diagnostics": [
+    {
+      "id": "after_param",
+      "expected": {
+        "line": 4,
+        "col": 30,
+        "text": "column \"bogus\" does not exist"
+      },
+      "actual": "evals/diagnostics/after_param.sql(4,30): error sqlsure10: column \"bogus\" does not exist",
+      "passed": true
+    },
+    {
+      "id": "bad_header",
+      "expected": {
+        "line": 2,
+        "col": 1,
+        "text": "Expected `-- name: <identifier> :one|:many|:exec|:execrows`"
+      },
+      "actual": "evals/diagnostics/bad_header.sql(2,1): error sqlsure1: Expected `-- name: <identifier> :one|:many|:exec|:execrows`.",
+      "passed": true
+    },
+    {
+      "id": "duplicate_column",
+      "expected": {
+        "line": 2,
+        "col": 1,
+        "text": "two columns named \"id\""
+      },
+      "actual": "evals/diagnostics/duplicate_column.sql(2,1): error sqlsure12: \"q\" returns two columns named \"id\". Rename one with AS.",
+      "passed": true
+    },
+    {
+      "id": "duplicate_name",
+      "expected": {
+        "line": 5,
+        "col": 1,
+        "text": "Duplicate query name \"q\""
+      },
+      "actual": "evals/diagnostics/duplicate_name.sql(5,1): error sqlsure4: Duplicate query name \"q\".",
+      "passed": true
+    },
+    {
+      "id": "one_without_rows",
+      "expected": {
+        "line": 2,
+        "col": 1,
+        "text": "returns no rows"
+      },
+      "actual": "evals/diagnostics/one_without_rows.sql(2,1): error sqlsure12: \"q\" is :one but returns no rows. Use :exec or :execrows, or add RETURNING.",
+      "passed": true
+    },
+    {
+      "id": "positional",
+      "expected": {
+        "line": 3,
+        "col": 35,
+        "text": "Positional parameters"
+      },
+      "actual": "evals/diagnostics/positional.sql(3,35): error sqlsure5: Positional parameters ($1) are not supported. Use named parameters like :id.",
+      "passed": true
+    },
+    {
+      "id": "stray_text",
+      "expected": {
+        "line": 2,
+        "col": 1,
+        "text": "SQL outside a named query"
+      },
+      "actual": "evals/diagnostics/stray_text.sql(2,1): error sqlsure3: SQL outside a named query. Start each query with a line like `-- name: getUser :one`.",
+      "passed": true
+    },
+    {
+      "id": "syntax_error",
+      "expected": {
+        "line": 3,
+        "col": 1,
+        "text": "syntax error at or near \"SELEC\""
+      },
+      "actual": "evals/diagnostics/syntax_error.sql(3,1): error sqlsure10: syntax error at or near \"SELEC\"",
+      "passed": true
+    },
+    {
+      "id": "two_statements",
+      "expected": {
+        "line": 3,
+        "col": 1,
+        "text": "One statement per query"
+      },
+      "actual": "evals/diagnostics/two_statements.sql(3,1): error sqlsure6: One statement per query. Split this into separate `-- name:` blocks.",
+      "passed": true
+    },
+    {
+      "id": "type_mismatch",
+      "expected": {
+        "line": 3,
+        "col": 33,
+        "text": "operator does not exist: integer = date"
+      },
+      "actual": "evals/diagnostics/type_mismatch.sql(3,33): error sqlsure10: operator does not exist: integer = date",
+      "passed": true
+    },
+    {
+      "id": "unicode_before",
+      "expected": {
+        "line": 3,
+        "col": 25,
+        "text": "column \"nope\" does not exist"
+      },
+      "actual": "evals/diagnostics/unicode_before.sql(3,25): error sqlsure10: column \"nope\" does not exist",
+      "passed": true
+    },
+    {
+      "id": "unknown_column",
+      "expected": {
+        "line": 3,
+        "col": 8,
+        "text": "column \"nope\" does not exist"
+      },
+      "actual": "evals/diagnostics/unknown_column.sql(3,8): error sqlsure10: column \"nope\" does not exist",
+      "passed": true
+    },
+    {
+      "id": "unknown_table",
+      "expected": {
+        "line": 3,
+        "col": 15,
+        "text": "relation \"missing\" does not exist"
+      },
+      "actual": "evals/diagnostics/unknown_table.sql(3,15): error sqlsure10: relation \"missing\" does not exist",
+      "passed": true
+    }
+  ],
+  "mutations": [
+    {
+      "id": "ignore-outer-joins",
+      "description": "forget that LEFT/RIGHT/FULL JOIN makes a side nullable",
+      "killed": true,
+      "violations": 34
+    },
+    {
+      "id": "ignore-set-operations",
+      "description": "trust column origins through UNION/INTERSECT/EXCEPT",
+      "killed": false,
+      "violations": 0
+    },
+    {
+      "id": "ignore-grouping-sets",
+      "description": "forget that ROLLUP/CUBE/GROUPING SETS null out grouped columns",
+      "killed": true,
+      "violations": 6
+    },
+    {
+      "id": "trust-computed-columns",
+      "description": "treat every computed expression as non-null",
+      "killed": true,
+      "violations": 38
+    },
+    {
+      "id": "ignore-not-null-constraints",
+      "description": "treat every table column as NOT NULL",
+      "killed": true,
+      "violations": 34
+    },
+    {
+      "id": "int8-as-number",
+      "description": "type bigint as number (pg returns a string)",
+      "killed": true,
+      "violations": 19
+    },
+    {
+      "id": "numeric-as-number",
+      "description": "type numeric as number (pg returns a string)",
+      "killed": true,
+      "violations": 2
+    },
+    {
+      "id": "date-as-string",
+      "description": "type date/timestamp as string (pg returns Date)",
+      "killed": true,
+      "violations": 8
+    },
+    {
+      "id": "non-null-array-elements",
+      "description": "assume array elements are never NULL",
+      "killed": true,
+      "violations": 3
+    }
+  ],
+  "perf": null,
+  "suites": [
+    {
+      "suite": "shop",
+      "queries": 24,
+      "analyzed": 24,
+      "analysisProblems": [],
+      "executedQueries": 23,
+      "runs": 534,
+      "erroredRuns": 54,
+      "rowsChecked": 1267,
+      "valuesChecked": 5644,
+      "labeled": {
+        "nonnull": 58,
+        "nonnullInferredNonnull": 53,
+        "nullable": 26,
+        "nullableInferredNullable": 26
+      },
+      "precisionMisses": [
+        "shop.categoryTree.id",
+        "shop.categoryTree.name",
+        "shop.productSummary.id",
+        "shop.productSummary.name",
+        "shop.productSummary.review_count"
+      ],
+      "inferredNonnull": 53,
+      "columns": 84
+    },
+    {
+      "suite": "traps",
+      "queries": 32,
+      "analyzed": 32,
+      "analysisProblems": [],
+      "executedQueries": 32,
+      "runs": 129,
+      "erroredRuns": 2,
+      "rowsChecked": 1395,
+      "valuesChecked": 2811,
+      "labeled": {
+        "nonnull": 41,
+        "nonnullInferredNonnull": 33,
+        "nullable": 32,
+        "nullableInferredNullable": 32
+      },
+      "precisionMisses": [
+        "traps.viewColumns.id",
+        "traps.viewColumns.label",
+        "traps.domainAndEnumArray.total",
+        "traps.selfJoin.child_label",
+        "traps.naturalJoinFull.id",
+        "traps.naturalJoinFull.label",
+        "traps.castOfColumn.id_text",
+        "traps.castOfColumn.short"
+      ],
+      "inferredNonnull": 33,
+      "columns": 73
+    }
+  ],
+  "checks": [
+    {
+      "name": "Soundness: values contradicting their type",
+      "value": "0",
+      "threshold": "= 0",
+      "passed": true
+    },
+    {
+      "name": "Precision: truly non-null columns typed non-null",
+      "value": "86.9% (86/99)",
+      "threshold": "≥ 85%",
+      "passed": true
+    },
+    {
+      "name": "Breadth: real-world queries typed (sqlc corpus)",
+      "value": "skipped",
+      "threshold": "≥ 90%",
+      "passed": true
+    },
+    {
+      "name": "Feature fixtures (exact types through tsc)",
+      "value": "100%",
+      "threshold": "= 100%",
+      "passed": true
+    },
+    {
+      "name": "Negative control fails",
+      "value": "yes",
+      "threshold": "yes",
+      "passed": true
+    },
+    {
+      "name": "Diagnostics at exact line:column",
+      "value": "100%",
+      "threshold": "= 100%",
+      "passed": true
+    },
+    {
+      "name": "Mutations killed by the oracle",
+      "value": "89% (8/9)",
+      "threshold": "= 100%",
+      "passed": false
+    }
+  ],
+  "passed": false
+}

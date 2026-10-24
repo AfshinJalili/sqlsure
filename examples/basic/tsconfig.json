@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "es2023",
+    "module": "nodenext",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "contentMappers": [
+    { "package": "sqlsure", "extensions": [".sql"], "options": { "schema": "./db/schema.sql" } }
+  ],
+  "include": ["src"]
+}
