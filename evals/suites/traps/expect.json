@@ -1,0 +1,139 @@
+{
+  "leftJoinRightSide": {
+    "a_label": "nonnull",
+    "b_label": "nullable"
+  },
+  "rightJoinLeftSide": {
+    "a_label": "nullable",
+    "b_label": "nonnull"
+  },
+  "fullJoin": {
+    "a_label": "nullable",
+    "b_label": "nullable"
+  },
+  "nestedJoin": {
+    "a_label": "nonnull",
+    "b_label": "nullable",
+    "c_label": "nullable"
+  },
+  "joinInSubquery": {
+    "b_label": "nullable"
+  },
+  "cteOnNullableSide": {
+    "a_label": "nonnull",
+    "b_label": "nullable"
+  },
+  "lateralLeftJoin": {
+    "a_label": "nonnull",
+    "b_label": "nullable"
+  },
+  "unionWithNull": {
+    "label": "nullable"
+  },
+  "unionInSubquery": {
+    "label": "nullable"
+  },
+  "rollup": {
+    "label": "nullable",
+    "total": "nullable"
+  },
+  "cubeGroups": {
+    "label": "nullable",
+    "n": "nullable",
+    "cnt": "nonnull"
+  },
+  "viewColumns": {
+    "id": "nonnull",
+    "label": "nonnull"
+  },
+  "scalarSubquery": {
+    "id": "nonnull",
+    "first_b": "nullable"
+  },
+  "aggregatesOnEmpty": {
+    "max_n": "nullable",
+    "sum_n": "nullable",
+    "cnt": "nonnull",
+    "labels": "nullable",
+    "ids": "nullable"
+  },
+  "caseWithoutElse": {
+    "maybe_label": "nullable"
+  },
+  "nullifTrap": {
+    "label_or_null": "nullable"
+  },
+  "coalesceSafe": {
+    "b_label": "nonnull"
+  },
+  "jsonNullLiteral": {
+    "id": "nonnull",
+    "j": "nonnull",
+    "missing": "nullable"
+  },
+  "domainAndEnumArray": {
+    "id": "nonnull",
+    "qty": "nonnull",
+    "moods": "nonnull",
+    "p": "nullable",
+    "span": "nullable",
+    "total": "nonnull"
+  },
+  "selfJoin": {
+    "parent_label": "nullable",
+    "child_label": "nonnull"
+  },
+  "usingJoin": {
+    "id": "nonnull",
+    "label": "nullable"
+  },
+  "naturalJoinFull": {
+    "id": "nonnull",
+    "label": "nonnull"
+  },
+  "windowLag": {
+    "id": "nonnull",
+    "prev": "nullable",
+    "rn": "nonnull"
+  },
+  "filterAggregate": {
+    "label": "nonnull",
+    "big": "nonnull",
+    "huge": "nullable"
+  },
+  "upsertReturning": {
+    "id": "nonnull",
+    "label": "nonnull",
+    "n": "nonnull"
+  },
+  "updateFromLeftJoin": {
+    "id": "nonnull",
+    "b_label": "nullable"
+  },
+  "otherSchema": {
+    "id": "nonnull",
+    "note": "nonnull",
+    "label": "nullable"
+  },
+  "shadowedSchema": {
+    "id": "nonnull",
+    "label": "nonnull"
+  },
+  "existsAndNullTest": {
+    "id": "nonnull",
+    "has_b": "nonnull",
+    "no_label": "nonnull"
+  },
+  "distinctOn": {
+    "id": "nonnull",
+    "label": "nullable"
+  },
+  "castOfColumn": {
+    "id_text": "nonnull",
+    "short": "nonnull"
+  },
+  "inListUnion": {
+    "id": "nonnull",
+    "label": "nonnull"
+  }
+}

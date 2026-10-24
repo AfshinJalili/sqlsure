@@ -1,0 +1,130 @@
+{
+  "getUser": {
+    "id": "nonnull",
+    "email": "nonnull",
+    "display_name": "nullable",
+    "is_admin": "nonnull",
+    "created_at": "nonnull",
+    "last_login": "nullable",
+    "settings": "nonnull",
+    "tags": "nullable"
+  },
+  "getUserByEmail": {
+    "id": "nonnull",
+    "email": "nonnull",
+    "display_name": "nullable",
+    "is_admin": "nonnull"
+  },
+  "listUsers": {
+    "id": "nonnull",
+    "email": "nonnull",
+    "created_at": "nonnull",
+    "last_login": "nullable",
+    "settings": "nonnull",
+    "tags": "nullable"
+  },
+  "listProducts": {
+    "id": "nonnull",
+    "sku": "nonnull",
+    "name": "nonnull",
+    "price": "nonnull",
+    "weight_grams": "nullable",
+    "photo": "nullable",
+    "ratings": "nonnull"
+  },
+  "productsWithCategory": {
+    "id": "nonnull",
+    "name": "nonnull",
+    "category_name": "nullable",
+    "category_id": "nullable"
+  },
+  "productsInCategory": {
+    "id": "nonnull",
+    "name": "nonnull",
+    "category_name": "nonnull"
+  },
+  "categoryTree": {
+    "id": "nonnull",
+    "name": "nonnull",
+    "parent_name": "nullable"
+  },
+  "orderTotals": {
+    "id": "nonnull",
+    "status": "nonnull",
+    "total": "nullable",
+    "items": "nonnull"
+  },
+  "userOrders": {
+    "id": "nonnull",
+    "status": "nonnull",
+    "placed_on": "nonnull",
+    "shipped_at": "nullable",
+    "email": "nonnull"
+  },
+  "ordersByStatus": {
+    "id": "nonnull",
+    "user_id": "nonnull",
+    "status": "nonnull"
+  },
+  "reviewsWithAuthors": {
+    "id": "nonnull",
+    "stars": "nonnull",
+    "body": "nullable",
+    "meta": "nullable",
+    "author_email": "nullable"
+  },
+  "averageStars": {
+    "avg_stars": "nullable",
+    "best": "nullable",
+    "n": "nonnull"
+  },
+  "productSummary": {
+    "id": "nonnull",
+    "name": "nonnull",
+    "category": "nullable",
+    "review_count": "nonnull"
+  },
+  "recentActivity": {
+    "id": "nonnull",
+    "email": "nonnull",
+    "last_order": "nullable"
+  },
+  "createUser": {
+    "id": "nonnull",
+    "email": "nonnull",
+    "display_name": "nullable",
+    "created_at": "nonnull"
+  },
+  "renameUser": {
+    "id": "nonnull",
+    "display_name": "nullable"
+  },
+  "searchProducts": {
+    "id": "nonnull",
+    "name": "nonnull",
+    "description": "nullable"
+  },
+  "topBuyers": {
+    "email": "nonnull",
+    "orders": "nonnull",
+    "units": "nonnull"
+  },
+  "productExists": {
+    "exists": "nonnull"
+  },
+  "usersWithTag": {
+    "id": "nonnull",
+    "email": "nonnull"
+  },
+  "settingsKey": {
+    "id": "nonnull",
+    "theme": "nullable",
+    "lang": "nullable"
+  },
+  "rankedProducts": {
+    "id": "nonnull",
+    "name": "nonnull",
+    "rank": "nonnull",
+    "prev_name": "nullable"
+  }
+}

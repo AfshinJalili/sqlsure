@@ -1,0 +1,14 @@
+import * as after_param from "./after_param.sql";
+import * as bad_header from "./bad_header.sql";
+import * as duplicate_column from "./duplicate_column.sql";
+import * as duplicate_name from "./duplicate_name.sql";
+import * as one_without_rows from "./one_without_rows.sql";
+import * as positional from "./positional.sql";
+import * as stray_text from "./stray_text.sql";
+import * as syntax_error from "./syntax_error.sql";
+import * as two_statements from "./two_statements.sql";
+import * as type_mismatch from "./type_mismatch.sql";
+import * as unicode_before from "./unicode_before.sql";
+import * as unknown_column from "./unknown_column.sql";
+import * as unknown_table from "./unknown_table.sql";
+void [after_param, bad_header, duplicate_column, duplicate_name, one_without_rows, positional, stray_text, syntax_error, two_statements, type_mismatch, unicode_before, unknown_column, unknown_table];

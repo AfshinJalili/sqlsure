@@ -1,0 +1,7 @@
+node_modules/
+dist/
+evals/.cache/
+evals/_*.ts
+evals/smoke/
+*.tsbuildinfo
+.DS_Store

@@ -1,0 +1,5 @@
+{
+  "compilerOptions": { "target": "es2023", "module": "nodenext", "strict": true, "noEmit": true, "skipLibCheck": true, "types": ["node"], "lib": ["es2023"], "allowImportingTsExtensions": true },
+  "contentMappers": [{ "package": "sqlsure", "extensions": [".sql"], "options": { "schema": "./schema.sql" } }],
+  "include": ["*.check.ts", "_helpers.ts"]
+}
