@@ -24,6 +24,15 @@ sqlsure is a [TypeScript 7.1 content mapper](https://github.com/microsoft/typesc
 Typed-SQL tools usually ask you to take their word for it. sqlsure ships the evidence: an eval suite that runs every query on a **real Postgres through the real `pg` driver** — on an empty database and on randomly seeded ones built to break types (NULL wherever allowed, JSON `null`, arrays holding NULL, parents with no children) — and checks every value that comes back against the type sqlsure claimed. It also runs against [sqlc's](https://github.com/sqlc-dev/sqlc) end-to-end test suite, a corpus of real-world queries written by other people, and mutation-tests itself: deliberate bugs are injected into sqlsure, and the oracle must catch every one.
 
 <!-- scorecard:start -->
+|  | Check | Result | Threshold |
+| --- | --- | --- | --- |
+| ✅ | Soundness: values contradicting their type | 0 | = 0 |
+| ✅ | Precision: truly non-null columns typed non-null | 86.9% (86/99) | ≥ 85% |
+| ✅ | Breadth: real-world queries typed (sqlc corpus) | 97.1% (531/547) | ≥ 90% |
+| ✅ | Feature fixtures (exact types through tsc) | 100% | = 100% |
+| ✅ | Negative control fails | yes | yes |
+| ✅ | Diagnostics at exact line:column | 100% | = 100% |
+| ✅ | Mutations killed by the oracle | 100% (9/9) | = 100% |
 <!-- scorecard:end -->
 
 The full report, including every precision miss and every corpus query sqlsure does not type, is in [SCORECARD.md](./SCORECARD.md). Run it yourself with `npm run evals`.
@@ -94,6 +103,20 @@ Every query function takes anything with node-postgres' `query(text, values)` �
 ## What you get
 
 <!-- features:start -->
+|  | Feature |
+| --- | --- |
+| ✅ | Aggregates and windows: count/row_number/EXISTS/COALESCE(…, literal) are non-null; sum/max/lag are nullable |
+| ✅ | Arrays (elements may be NULL); arrays of enums come back as text, typed string |
+| ✅ | CTEs and set operations (UNION output is conservatively nullable) |
+| ✅ | Enums become string-literal unions, for columns and parameters |
+| ✅ | Joins: INNER keeps NOT NULL, LEFT/RIGHT/FULL/LATERAL make the outer side nullable |
+| ✅ | json/jsonb as a Json value; JSON parameters take objects or pre-stringified JSON |
+| ✅ | Every query function carries its final SQL and parameter order |
+| ✅ | Schema-qualified tables, quoted identifiers, views (view columns are conservatively nullable) |
+| ✅ | Named :params (reused names are one parameter); casts, strings, dollar quotes and comments are left alone |
+| ✅ | Scalar types as node-postgres returns them (int8/numeric as string, dates as Date, bytea as Buffer, interval, point) |
+| ✅ | SELECT with NOT NULL and nullable columns; :one returns Row | null; sqlc-style /* name: */ headers |
+| ✅ | INSERT/UPDATE … RETURNING, :exec (void) and :execrows (affected row count) |
 <!-- features:end -->
 
 Types follow what node-postgres returns with its default parsers: `bigint` and `numeric` are `string` (no silent precision loss), `date` and `timestamp[tz]` are `Date`, `bytea` is `Buffer`, `json`/`jsonb` is a `Json` value, enums are string-literal unions, and array elements are always `T | null` because Postgres arrays can hold NULL.
@@ -123,6 +146,13 @@ Everything else is `| null`. That is deliberately conservative: a missing `| nul
 ## Performance
 
 <!-- perf:start -->
+| Queries | tsc, warm | tsc, first run on a machine | plain tsc (no .sql) | per query |
+| --- | --- | --- | --- | --- |
+| 10 | 1.22 s | 3.49 s | 0.14 s | 108.4 ms |
+| 100 | 1.46 s | 4.07 s | 0.14 s | 13.3 ms |
+| 1000 | 2.41 s | 4.71 s | 0.14 s | 2.3 ms |
+
+Run time: 1.2 µs added per query call over calling `pg` directly (71 µs raw round trip to a local Postgres, median of 5 × 3000 calls).
 <!-- perf:end -->
 
 The first run on a machine boots Postgres from scratch (`initdb`); its data directory is then cached in your temp folder and later runs start from it.

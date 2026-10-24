@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-24T22:41:02.265Z",
+  "date": "2026-10-24T22:54:05.519Z",
   "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
   "thresholds": {
     "soundnessViolations": 0,
@@ -11,10 +11,10 @@
   },
   "soundness": {
     "violations": [],
-    "valuesChecked": 8455,
-    "rowsChecked": 2662,
-    "queriesExecuted": 55,
-    "schemas": 2
+    "valuesChecked": 32748,
+    "rowsChecked": 13652,
+    "queriesExecuted": 549,
+    "schemas": 285
   },
   "precision": {
     "labeledNonnull": 99,
@@ -37,11 +37,126 @@
     ]
   },
   "breadth": {
-    "percent": null,
-    "typed": 0,
-    "acceptedByPostgres": 0,
-    "refusedByDesign": 0,
-    "corpus": null
+    "percent": 97.07495429616088,
+    "typed": 531,
+    "acceptedByPostgres": 547,
+    "refusedByDesign": 16,
+    "corpus": {
+      "source": "sqlc-dev/sqlc internal/endtoend/testdata",
+      "commit": "3ad8b20fb02b5bea81591b673da0758b8685d951",
+      "casesFound": 665,
+      "casesDeduplicated": 317,
+      "casesExpectedToFail": 39,
+      "casesSchemaInvalidOnPostgres": 2,
+      "casesSchemaFailedInSqlsure": [],
+      "queries": 599,
+      "translated": 292,
+      "unsupportedSyntax": [
+        {
+          "reason": "sqlc.slice / sqlc.embed macros",
+          "count": 22
+        },
+        {
+          "reason": "sqlc mode :copyfrom",
+          "count": 7
+        },
+        {
+          "reason": "sqlc mode :execlastid",
+          "count": 1
+        }
+      ],
+      "rejectedByPostgres": 21,
+      "acceptedByPostgres": 547,
+      "typed": 531,
+      "failures": [
+        {
+          "case": "cte_count/pgx/v4",
+          "query": "CTECount",
+          "reason": "\"CTECount\" returns two columns named \"count\". Rename one with AS."
+        },
+        {
+          "case": "cte_multiple_alias/postgresql/pgx",
+          "query": "BadQuery",
+          "reason": "\"BadQuery\" returns two columns named \"name\". Rename one with AS."
+        },
+        {
+          "case": "datatype/pgx/v4",
+          "query": "Test",
+          "reason": "parse: One statement per query. Split this into separate `-- name:` blocks."
+        },
+        {
+          "case": "join_alias/postgresql/pgx/v4",
+          "query": "AliasExpand",
+          "reason": "\"AliasExpand\" returns two columns named \"id\". Rename one with AS."
+        },
+        {
+          "case": "join_full/postgresql",
+          "query": "FullJoin",
+          "reason": "\"FullJoin\" returns two columns named \"id\". Rename one with AS."
+        },
+        {
+          "case": "join_left/postgresql",
+          "query": "AllAuthors",
+          "reason": "\"AllAuthors\" returns two columns named \"id\". Rename one with AS."
+        },
+        {
+          "case": "join_left/postgresql",
+          "query": "AllAuthorsAliases",
+          "reason": "\"AllAuthorsAliases\" returns two columns named \"id\". Rename one with AS."
+        },
+        {
+          "case": "join_left/postgresql",
+          "query": "AllAuthorsAliases2",
+          "reason": "\"AllAuthorsAliases2\" returns two columns named \"id\". Rename one with AS."
+        },
+        {
+          "case": "join_right/postgresql",
+          "query": "RightJoin",
+          "reason": "\"RightJoin\" returns two columns named \"id\". Rename one with AS."
+        },
+        {
+          "case": "json_build/postgresql/pgx/v4",
+          "query": "SelectJSONBBuildArray",
+          "reason": "\"SelectJSONBBuildArray\" returns two columns named \"jsonb_build_array\". Rename one with AS."
+        },
+        {
+          "case": "json_build/postgresql/pgx/v4",
+          "query": "SelectJSONBBuildObject",
+          "reason": "\"SelectJSONBBuildObject\" returns two columns named \"jsonb_build_object\". Rename one with AS."
+        },
+        {
+          "case": "json_build/postgresql/pgx/v4",
+          "query": "SelectJSONBuildArray",
+          "reason": "\"SelectJSONBuildArray\" returns two columns named \"json_build_array\". Rename one with AS."
+        },
+        {
+          "case": "json_build/postgresql/pgx/v4",
+          "query": "SelectJSONBuildObject",
+          "reason": "\"SelectJSONBuildObject\" returns two columns named \"json_build_object\". Rename one with AS."
+        },
+        {
+          "case": "nextval/postgresql",
+          "query": "GetNextID",
+          "reason": "\"GetNextID\" returns two columns named \"pk\". Rename one with AS."
+        },
+        {
+          "case": "star_expansion/postgresql/pgx/v4",
+          "query": "StarExpansion",
+          "reason": "\"StarExpansion\" returns two columns named \"a\". Rename one with AS."
+        },
+        {
+          "case": "star_expansion_core/postgresql",
+          "query": "StarExpansion",
+          "reason": "\"StarExpansion\" returns two columns named \"a\". Rename one with AS."
+        },
+        {
+          "case": "star_expansion_core/postgresql",
+          "query": "StarExpansionJoin",
+          "reason": "\"StarExpansionJoin\" returns two columns named \"a\". Rename one with AS."
+        }
+      ],
+      "sqlsureLaxer": 13
+    }
   },
   "features": {
     "features": [
@@ -107,7 +222,7 @@
       },
       {
         "id": "select",
-        "description": "SELECT with NOT NULL and nullable columns; :one returns Row | null",
+        "description": "SELECT with NOT NULL and nullable columns; :one returns Row | null; sqlc-style /* name: */ headers",
         "passed": true,
         "errors": []
       },
@@ -119,7 +234,7 @@
       }
     ],
     "negativeControlFailed": true,
-    "ms": 1293.6378019999997
+    "ms": 1243.2088930000318
   },
   "diagnostics": [
     {
@@ -261,10 +376,10 @@
       "violations": 34
     },
     {
-      "id": "ignore-set-operations",
-      "description": "trust column origins through UNION/INTERSECT/EXCEPT",
-      "killed": false,
-      "violations": 0
+      "id": "skip-cte-references",
+      "description": "forget that a CTE joined on the nullable side makes its tables nullable",
+      "killed": true,
+      "violations": 2
     },
     {
       "id": "ignore-grouping-sets",
@@ -282,7 +397,7 @@
       "id": "ignore-not-null-constraints",
       "description": "treat every table column as NOT NULL",
       "killed": true,
-      "violations": 34
+      "violations": 35
     },
     {
       "id": "int8-as-number",
@@ -306,10 +421,43 @@
       "id": "non-null-array-elements",
       "description": "assume array elements are never NULL",
       "killed": true,
-      "violations": 3
+      "violations": 2
     }
   ],
-  "perf": null,
+  "perf": {
+    "tsc": [
+      {
+        "queries": 10,
+        "files": 1,
+        "warmMs": 1224.6650390000432,
+        "coldMs": 3487.8898710000212,
+        "baselineMs": 140.4819070000085,
+        "perQueryMs": 108.41831320000347
+      },
+      {
+        "queries": 100,
+        "files": 10,
+        "warmMs": 1464.1038819999667,
+        "coldMs": 4065.5989320000517,
+        "baselineMs": 136.93882899999153,
+        "perQueryMs": 13.271650529999752
+      },
+      {
+        "queries": 1000,
+        "files": 100,
+        "warmMs": 2409.7811689999653,
+        "coldMs": 4714.440232999972,
+        "baselineMs": 142.477600000042,
+        "perQueryMs": 2.2673035689999232
+      }
+    ],
+    "runtime": {
+      "calls": 3000,
+      "rawMsPerCall": 0.07061336566666918,
+      "sqlsureMsPerCall": 0.07178920566667027,
+      "overheadUsPerCall": 1.1758400000010938
+    }
+  },
   "suites": [
     {
       "suite": "shop",
@@ -319,8 +467,8 @@
       "executedQueries": 23,
       "runs": 534,
       "erroredRuns": 54,
-      "rowsChecked": 1267,
-      "valuesChecked": 5644,
+      "rowsChecked": 1254,
+      "valuesChecked": 5572,
       "labeled": {
         "nonnull": 58,
         "nonnullInferredNonnull": 53,
@@ -345,8 +493,8 @@
       "executedQueries": 32,
       "runs": 129,
       "erroredRuns": 2,
-      "rowsChecked": 1395,
-      "valuesChecked": 2811,
+      "rowsChecked": 1398,
+      "valuesChecked": 2820,
       "labeled": {
         "nonnull": 41,
         "nonnullInferredNonnull": 33,
@@ -382,7 +530,7 @@
     },
     {
       "name": "Breadth: real-world queries typed (sqlc corpus)",
-      "value": "skipped",
+      "value": "97.1% (531/547)",
       "threshold": "≥ 90%",
       "passed": true
     },
@@ -406,10 +554,10 @@
     },
     {
       "name": "Mutations killed by the oracle",
-      "value": "89% (8/9)",
+      "value": "100% (9/9)",
       "threshold": "= 100%",
-      "passed": false
+      "passed": true
     }
   ],
-  "passed": false
+  "passed": true
 }

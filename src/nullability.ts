@@ -65,7 +65,8 @@ export async function analyzeStatement(sql: string, engine: Engine): Promise<Fac
     walk(side, (n) => {
       const rv = n.RangeVar;
       if (!rv?.relname) return;
-      if (!rv.schemaname && ctes.has(rv.relname) && !mutations.has("skip-cte-references")) {
+      if (!rv.schemaname && ctes.has(rv.relname)) {
+        if (mutations.has("skip-cte-references")) return;
         if (!visitedCtes.has(rv.relname)) {
           visitedCtes.add(rv.relname);
           collect(ctes.get(rv.relname)!);
