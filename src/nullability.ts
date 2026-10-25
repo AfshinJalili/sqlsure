@@ -105,10 +105,12 @@ export async function analyzeStatement(sql: string, engine: Engine, columnCount:
 
 function expressionFacts(stmt: Node, columnCount: number): (boolean | undefined)[] | null {
   let targets: Node[] | undefined;
+  let keys = new Set<string>();
   if (stmt.SelectStmt) {
     const s = stmt.SelectStmt;
     if (s.op && s.op !== "SETOP_NONE") return null;
     targets = s.targetList;
+    if (targets) keys = groupingKeys(s.groupClause ?? [], targets);
   } else {
     const dml = stmt.InsertStmt ?? stmt.UpdateStmt ?? stmt.DeleteStmt ?? stmt.MergeStmt;
     targets = dml?.returningList;
@@ -117,7 +119,8 @@ function expressionFacts(stmt: Node, columnCount: number): (boolean | undefined)
   // `*`, `t.*` and `(composite).*` expand to any number of columns. Targets before the first one
   // line up with output columns from the start, targets after the last one from the end.
   const stars = targets.flatMap((t, i) => (isStar(t.ResTarget?.val) ? [i] : []));
-  const proven = (t: Node) => (provenNotNull(t.ResTarget?.val) ? true : undefined);
+  const nulled = (e: Node) => keys.size > 0 && keys.has(normalized(e));
+  const proven = (t: Node) => (provenNotNull(t.ResTarget?.val, nulled) ? true : undefined);
   if (!stars.length) return targets.length === columnCount ? targets.map(proven) : null;
   const first = stars[0];
   const afterLast = targets.length - stars[stars.length - 1] - 1;
@@ -128,20 +131,72 @@ function expressionFacts(stmt: Node, columnCount: number): (boolean | undefined)
   return out;
 }
 
+/**
+ * Expressions GROUPING SETS / ROLLUP / CUBE can set to NULL in subtotal rows, normalized. Postgres
+ * matches grouping expressions after resolving names, so `coalesce(a.n, 0)` is the key
+ * `coalesce(n, 0)`, and an output name or a bare integer position stands for that output's
+ * expression. Keys outside any grouping set are in every set and never NULLed.
+ */
+function groupingKeys(groupClause: Node[], targets: Node[]): Set<string> {
+  const keys = new Set<string>();
+  if (mutations.has("ignore-grouping-sets")) return keys;
+  const add = (e: Node) => {
+    keys.add(normalized(e));
+    const name = e.ColumnRef?.fields?.length === 1 ? e.ColumnRef.fields[0].String?.sval : undefined;
+    const position = e.A_Const?.ival ? e.A_Const.ival.ival : undefined;
+    targets.forEach((t, i) => {
+      if ((name !== undefined && t.ResTarget?.name === name) || position === i + 1) keys.add(normalized(t.ResTarget?.val));
+    });
+  };
+  const visit = (n: Node, inSet: boolean) => {
+    if (n.GroupingSet) for (const c of n.GroupingSet.content ?? []) visit(c, true);
+    else if (inSet && n.RowExpr) for (const c of n.RowExpr.args ?? []) visit(c, true);
+    else if (inSet) add(n);
+  };
+  for (const g of groupClause) visit(g, false);
+  return keys;
+}
+
+/** A canonical form for comparing expressions: no positions, column qualifiers or casts; constants by value. */
+function normalized(e: unknown): string {
+  const strip = (n: unknown): unknown => {
+    if (Array.isArray(n)) return n.map(strip);
+    if (!n || typeof n !== "object") return n;
+    const o = n as Node;
+    if (o.TypeCast) return strip(o.TypeCast.arg);
+    if (o.ColumnRef) return { ColumnRef: strip(o.ColumnRef.fields?.[o.ColumnRef.fields.length - 1]) };
+    if (o.A_Const) return { A_Const: constantText(o.A_Const) };
+    return Object.fromEntries(Object.entries(o).filter(([k]) => k !== "location").map(([k, v]) => [k, strip(v)]));
+  };
+  return JSON.stringify(strip(e));
+}
+
+/** What a constant spells, so `1` and `'1'::int` compare equal, as they do once Postgres casts them. Protobuf omits zero values. */
+function constantText(c: Node): string | null {
+  if (c.isnull) return null;
+  if (c.ival) return String(c.ival.ival ?? 0);
+  if (c.fval) return c.fval.fval;
+  if (c.sval) return c.sval.sval ?? "";
+  if (c.boolval) return String(c.boolval.boolval ?? false);
+  if (c.bsval) return c.bsval.bsval;
+  return "";
+}
+
 function isStar(e: Node | undefined): boolean {
   return !!(e?.ColumnRef?.fields?.some((f: Node) => f.A_Star) || e?.A_Indirection?.indirection?.some((f: Node) => f.A_Star));
 }
 
 const NON_NULL_WINDOW = new Set(["row_number", "rank", "dense_rank", "percent_rank", "cume_dist", "ntile"]);
 
-function provenNotNull(e: Node | undefined): boolean {
-  if (!e) return false;
+/** `nulled` marks expressions a grouping set can set to NULL, whatever they are made of. */
+function provenNotNull(e: Node | undefined, nulled: (e: Node) => boolean): boolean {
+  if (!e || nulled(e)) return false;
   if (e.A_Const) return !e.A_Const.isnull;
-  if (e.TypeCast) return provenNotNull(e.TypeCast.arg);
+  if (e.TypeCast) return provenNotNull(e.TypeCast.arg, nulled);
   if (e.NullTest) return true;
   if (e.BooleanTest) return true;
   if (e.SubLink) return e.SubLink.subLinkType === "EXISTS_SUBLINK";
-  if (e.CoalesceExpr) return (e.CoalesceExpr.args ?? []).some(provenNotNull);
+  if (e.CoalesceExpr) return (e.CoalesceExpr.args ?? []).some((a: Node) => provenNotNull(a, nulled));
   if (e.FuncCall) {
     const name = funcName(e.FuncCall);
     if (name === "count") return true;

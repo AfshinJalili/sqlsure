@@ -140,5 +140,21 @@
     "a": "nullable",
     "b": "nullable",
     "one": "nonnull"
+  },
+  "groupedExpressions": {
+    "one": "nullable",
+    "c": "nullable",
+    "no_label": "nullable",
+    "cnt": "nonnull"
+  },
+  "groupedSubexpression": {
+    "flag": "nullable",
+    "safe": "nonnull",
+    "cnt": "nonnull"
+  },
+  "ungroupedLiteral": {
+    "scope": "nonnull",
+    "label": "nullable",
+    "cnt": "nonnull"
   }
 }

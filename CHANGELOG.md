@@ -4,6 +4,10 @@ All notable changes to sqlsure are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Fixed
+
+- An expression grouped by `ROLLUP`, `CUBE` or `GROUPING SETS` (a literal, `COALESCE(…)`, `x IS NULL`, or a cast of one) was typed non-null, but Postgres returns NULL for it in subtotal rows. Grouping keys are now matched the way Postgres matches them: by output name, by position, and ignoring column qualifiers and casts.
+
 ## [0.1.0] - 2026-10-25
 
 First release.

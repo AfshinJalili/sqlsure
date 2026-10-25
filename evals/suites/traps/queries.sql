@@ -103,3 +103,14 @@ SELECT id, label FROM a WHERE id IN (SELECT id FROM b UNION SELECT id FROM c);
 
 -- name: compositeStar :many
 SELECT (p).*, 1 AS one FROM weird;
+
+-- name: groupedExpressions :many
+SELECT 1 AS one, coalesce(n, 0) AS c, (label IS NULL) AS no_label, count(*) AS cnt
+FROM a GROUP BY ROLLUP (one, c, no_label);
+
+-- name: groupedSubexpression :many
+SELECT (label IS NULL)::int AS flag, coalesce(label IS NULL, true) AS safe, count(*) AS cnt
+FROM a GROUP BY GROUPING SETS ((label IS NULL), ());
+
+-- name: ungroupedLiteral :many
+SELECT 'all' AS scope, label, count(*) AS cnt FROM a GROUP BY CUBE (label);
