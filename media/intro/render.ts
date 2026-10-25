@@ -102,7 +102,7 @@ export {};
       },
       {
         to: card.breadth.percent,
-        decimals: 1,
+        decimals: Number.isInteger(card.breadth.percent) ? 0 : 1,
         suffix: "%",
         label: "of sqlc's real-world test queries typed",
         detail: `${card.breadth.typed} of ${card.breadth.acceptedByPostgres} queries written by other people`,
