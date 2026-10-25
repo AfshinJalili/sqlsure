@@ -7,6 +7,7 @@ import { defineQuery } from "../../src/runtime.ts";
 import { freshDatabase, dropDatabase } from "./pg.ts";
 
 const ROOT = new URL("../..", import.meta.url).pathname;
+const RUNTIME_TRIALS = 9;
 
 export interface TscTiming {
   queries: number;
@@ -20,7 +21,7 @@ export interface TscTiming {
 
 export interface PerfResult {
   tsc: TscTiming[];
-  runtime: { calls: number; rawMsPerCall: number; sqlsureMsPerCall: number; overheadUsPerCall: number };
+  runtime: { calls: number; trials: number; rawMsPerCall: number; sqlsureMsPerCall: number; overheadUsPerCall: number };
 }
 
 const TEMPLATES = [
@@ -94,23 +95,28 @@ export async function runPerf(opts: { sizes: number[]; log?: (s: string) => void
   const getOne = defineQuery({ name: "getOne", mode: "one", sql: "SELECT $1::int AS x", params: ["x"] });
   const raw: number[] = [];
   const ours: number[] = [];
+  const viaPg = (i: number) => db.query("SELECT $1::int AS x", [i]).then((r) => r.rows[0]);
+  const viaSqlsure = (i: number) => getOne(db, { x: i });
+  const batch = async (call: (i: number) => Promise<unknown>) => {
+    const t = performance.now();
+    for (let i = 0; i < calls; i++) await call(i);
+    return performance.now() - t;
+  };
   try {
-    for (let i = 0; i < 300; i++) await db.query("SELECT $1::int AS x", [i]); // warm up
-    for (let trial = 0; trial < 5; trial++) {
-      let t = performance.now();
-      for (let i = 0; i < calls; i++) (await db.query("SELECT $1::int AS x", [i])).rows[0];
-      raw.push(performance.now() - t);
-      t = performance.now();
-      for (let i = 0; i < calls; i++) await getOne(db, { x: i });
-      ours.push(performance.now() - t);
+    for (let i = 0; i < 300; i++) await viaPg(i), await viaSqlsure(i); // warm up both paths
+    for (let trial = 0; trial < RUNTIME_TRIALS; trial++) {
+      // Alternate which runs first, so a machine slowing down mid-trial is not counted as overhead.
+      if (trial % 2) ours.push(await batch(viaSqlsure)), raw.push(await batch(viaPg));
+      else raw.push(await batch(viaPg)), ours.push(await batch(viaSqlsure));
     }
   } finally {
     await dropDatabase(db);
   }
   const rawMs = median(raw) / calls;
   const oursMs = median(ours) / calls;
+  const overheadMs = median(ours.map((o, i) => o - raw[i])) / calls;
   return {
     tsc: timings,
-    runtime: { calls, rawMsPerCall: rawMs, sqlsureMsPerCall: oursMs, overheadUsPerCall: (oursMs - rawMs) * 1000 },
+    runtime: { calls, trials: RUNTIME_TRIALS, rawMsPerCall: rawMs, sqlsureMsPerCall: oursMs, overheadUsPerCall: overheadMs * 1000 },
   };
 }

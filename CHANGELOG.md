@@ -14,7 +14,7 @@ All notable changes to sqlsure are listed here. The format follows [Keep a Chang
 ### Changed
 
 - **Breaking:** query functions call `db.query({ text, values, rowMode })` instead of `db.query(text, values)`. `pg`'s `Client`, `Pool` and `PoolClient` (and drivers that mirror them) accept both; a hand-written object with only `query(text, values)` needs the config form.
-- More columns are proven non-null, so some `| null` disappear from generated types. Column references are traced to the FROM item they name, so one side of a self-join is no longer made nullable by the other. Casts, arithmetic, comparisons, `||`, `AND`/`OR`/`NOT`, `GREATEST`/`LEAST`, `IS DISTINCT FROM` and common built-in functions of non-null columns are non-null. Columns merged by `USING` and `NATURAL` follow their side of the join. A function, operator or cast the schema defines under a built-in's name is not trusted.
+- More columns are proven non-null, so some `| null` disappear from generated types. Column references are traced to the FROM item they name, so one side of a self-join is no longer made nullable by the other. Casts, arithmetic, comparisons, `||`, `AND`/`OR`/`NOT`, `GREATEST`/`LEAST`, `IS DISTINCT FROM` and common built-in functions of non-null columns are non-null, and so is every `ARRAY[…]` constructor. Columns merged by `USING` and `NATURAL` follow their side of the join. A function, operator or cast the schema defines under a built-in's name is not trusted.
 - View columns are proven from the view's definition, and generated columns from their expression, instead of always being nullable.
 
 ### Fixed

@@ -168,6 +168,11 @@ function checksTable(card: Scorecard): string {
   return mdTable(["", "Check", "Result", "Threshold"], card.checks.map((c) => [c.passed ? "✅" : "❌", c.name, c.value, c.threshold]));
 }
 
+/** Corpus queries sqlsure failed before Postgres judged them (schema or file syntax), so outside the breadth counts. */
+function notCounted(c: Omit<CorpusResult, "dynamic">): number {
+  return c.failures.length - (c.acceptedByPostgres - c.typed);
+}
+
 function featuresTable(card: Scorecard): string {
   return mdTable(["", "Feature"], card.features.features.map((f) => [f.passed ? "✅" : "❌", f.description]));
 }
@@ -179,7 +184,7 @@ function perfTable(card: Scorecard): string {
     card.perf.tsc.map((x) => [String(x.queries), `${(x.warmMs / 1000).toFixed(2)} s`, `${(x.coldMs / 1000).toFixed(2)} s`, `${(x.baselineMs / 1000).toFixed(2)} s`, `${x.perQueryMs.toFixed(1)} ms`]),
   );
   const r = card.perf.runtime;
-  return `${t}\n\nRun time: ${r.overheadUsPerCall.toFixed(1)} µs added per query call over calling \`pg\` directly (${(r.rawMsPerCall * 1000).toFixed(0)} µs raw round trip to a local Postgres, median of 5 × ${r.calls} calls).`;
+  return `${t}\n\nRun time: ${r.overheadUsPerCall.toFixed(1)} µs added per query call over calling \`pg\` directly (${(r.rawMsPerCall * 1000).toFixed(0)} µs raw round trip to a local Postgres, median difference over ${r.trials} alternating trials of ${r.calls} calls).`;
 }
 
 function renderScorecard(card: Scorecard): string {
@@ -202,7 +207,7 @@ function renderScorecard(card: Scorecard): string {
     "",
     "## Precision",
     "",
-    `Hand-labeled ground truth in \`evals/suites/*/expect.json\`: ${card.precision.inferredNonnull} of ${card.precision.labeledNonnull} truly non-null columns are typed non-null (${card.precision.percent.toFixed(1)}%). The misses, where sqlsure says \`| null\` although the value can never be NULL:`,
+    `Hand-labeled ground truth in \`evals/suites/*/expect.json\`: ${card.precision.inferredNonnull} of ${card.precision.labeledNonnull} truly non-null columns are typed non-null (${card.precision.percent.toFixed(1)}%). ${card.precision.misses.length ? "The misses, where sqlsure says \`| null\` although the value can never be NULL:" : "No misses: every column labeled non-null is typed non-null."}`,
     "",
     ...card.precision.misses.map((m) => `- \`${m}\``),
     "",
@@ -216,7 +221,8 @@ function renderScorecard(card: Scorecard): string {
           `- Not translatable: ${c.unsupportedSyntax.map((u) => `${u.reason} (${u.count})`).join(", ") || "none"}`,
           `- Real Postgres rejects ${c.rejectedByPostgres} (excluded)`,
           `- Real Postgres accepts ${c.acceptedByPostgres}; sqlsure types **${c.typed}** (${card.breadth.percent!.toFixed(1)}%)`,
-          `- Not typed: ${c.failures.length || "none"}`,
+          `- Accepted by Postgres but not typed: ${c.acceptedByPostgres - c.typed}`,
+          `- Stopped by sqlsure's own checks before reaching Postgres, so outside the counts above: ${notCounted(c)}`,
           "",
           ...c.failures.map((f) => `  - \`${f.case}\` ${f.query}: ${f.reason}`),
         ].join("\n")

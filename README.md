@@ -166,11 +166,12 @@ Everything else is `| null`. That is deliberately conservative: a missing `| nul
 | ✅ | Arrays (elements may be NULL); arrays of enums come back as text, typed string |
 | ✅ | CTEs and set operations (UNION output is conservatively nullable) |
 | ✅ | Enums become string-literal unions, for columns and parameters |
-| ✅ | Joins: INNER keeps NOT NULL, LEFT/RIGHT/FULL/LATERAL make the outer side nullable |
+| ✅ | Joins: INNER keeps NOT NULL, LEFT/RIGHT/FULL/LATERAL make the outer side nullable, alias by alias in a self-join |
 | ✅ | json/jsonb as a Json value; JSON parameters take objects or pre-stringified JSON |
 | ✅ | Every query function carries its final SQL and parameter order |
-| ✅ | Schema-qualified tables, quoted identifiers, views (view columns are conservatively nullable), queries named like sqlsure types |
+| ✅ | Schema-qualified tables, quoted identifiers, views (columns proven from the view's definition), queries named like sqlsure types |
 | ✅ | Named :params (reused names are one parameter); casts, strings, dollar quotes and comments are left alone |
+| ✅ | Two columns with the same name are both returned, the second as name_2 (as in sqlc) |
 | ✅ | Scalar types as node-postgres returns them (int8/numeric as string, dates as Date, bytea as Buffer, interval, point) |
 | ✅ | SELECT with NOT NULL and nullable columns; :one returns Row | null; sqlc-style /* name: */ headers |
 | ✅ | INSERT/UPDATE … RETURNING, :exec (void) and :execrows (affected row count) |
@@ -186,12 +187,12 @@ Typed-SQL tools usually ask you to take their word for it. sqlsure ships the evi
 |  | Check | Result | Threshold |
 | --- | --- | --- | --- |
 | ✅ | Soundness: values contradicting their type | 0 | = 0 |
-| ✅ | Precision: truly non-null columns typed non-null | 87.0% (87/100) | ≥ 85% |
-| ✅ | Breadth: real-world queries typed (sqlc corpus) | 97.1% (532/548) | ≥ 90% |
+| ✅ | Precision: truly non-null columns typed non-null | 100.0% (138/138) | ≥ 85% |
+| ✅ | Breadth: real-world queries typed (sqlc corpus) | 100.0% (548/548) | ≥ 90% |
 | ✅ | Feature fixtures (exact types through tsc) | 100% | = 100% |
 | ✅ | Negative control fails | yes | yes |
 | ✅ | Diagnostics at exact line:column | 100% | = 100% |
-| ✅ | Mutations killed by the oracle | 100% (9/9) | = 100% |
+| ✅ | Mutations killed by the oracle | 100% (11/11) | = 100% |
 <!-- scorecard:end -->
 
 CI runs all of it on every push. The full report, including every precision miss and every corpus query sqlsure does not type, is in [SCORECARD.md](./SCORECARD.md); [CONTRIBUTING.md](./CONTRIBUTING.md) explains how each check works and how to run it.
@@ -210,11 +211,11 @@ CI runs all of it on every push. The full report, including every precision miss
 <!-- perf:start -->
 | Queries | tsc, warm | tsc, first run on a machine | plain tsc (no .sql) | per query |
 | --- | --- | --- | --- | --- |
-| 10 | 0.93 s | 2.85 s | 0.15 s | 77.9 ms |
-| 100 | 1.19 s | 3.03 s | 0.13 s | 10.6 ms |
-| 1000 | 2.05 s | 3.83 s | 0.12 s | 1.9 ms |
+| 10 | 1.01 s | 2.96 s | 0.13 s | 88.5 ms |
+| 100 | 1.13 s | 3.01 s | 0.14 s | 10.0 ms |
+| 1000 | 1.82 s | 3.64 s | 0.11 s | 1.7 ms |
 
-Run time: -11.6 µs added per query call over calling `pg` directly (205 µs raw round trip to a local Postgres, median of 5 × 3000 calls).
+Run time: 2.4 µs added per query call over calling `pg` directly (242 µs raw round trip to a local Postgres, median difference over 9 alternating trials of 3000 calls).
 <!-- perf:end -->
 
 The first run on a machine boots Postgres from scratch (`initdb`); its data directory is then cached in your temp folder (`SQLSURE_CACHE_DIR` to move it), and later runs start from it.
