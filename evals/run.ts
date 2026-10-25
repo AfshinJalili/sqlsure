@@ -229,7 +229,7 @@ function renderScorecard(card: Scorecard): string {
     "",
     "## Diagnostics",
     "",
-    mdTable(["", "Case", "Expected"], card.diagnostics.map((d) => [d.passed ? "✅" : "❌", d.id, `${d.expected.line}:${d.expected.col} ${d.expected.text}`])),
+    mdTable(["", "Case", "Expected"], card.diagnostics.map((d) => [d.passed ? "✅" : "❌", d.id, d.expected.line ? `${d.expected.line}:${d.expected.col} ${d.expected.text}` : d.expected.text])),
     "",
     "## Mutation testing",
     "",

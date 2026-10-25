@@ -1,13 +1,20 @@
 // The TypeScript the checker sees for a .sql file, and the JavaScript the runtime loads for it.
 import type { FileAnalysis, QueryInfo } from "./analyze.ts";
-import type { ParsedFile } from "./parse-file.ts";
+import { typeNames, type ParsedFile } from "./parse-file.ts";
 import { render } from "./pgtypes.ts";
 
 const RUNTIME = "sqlsure/runtime";
 
-function pascal(name: string): string {
-  return name.charAt(0).toUpperCase() + name.slice(1);
-}
+/**
+ * Local aliases instead of named imports: an import would clash with a query named `Json` or
+ * `Query`, while a local type alias and an exported const of the same name can coexist.
+ */
+const TYPES_HEADER = [
+  `import type * as __sqlsure from "${RUNTIME}";`,
+  "type Query<P, R> = __sqlsure.Query<P, R>;",
+  "type Json = __sqlsure.Json;",
+  "type Interval = __sqlsure.Interval;",
+];
 
 function prop(name: string): string {
   return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(name) ? name : JSON.stringify(name);
@@ -23,7 +30,7 @@ function sqlDoc(q: { doc: string[]; sql: string }): string[] {
 }
 
 export function emitTypes(analysis: FileAnalysis): string {
-  const out: string[] = [`import type { Query, Json, Interval } from "${RUNTIME}";`, ""];
+  const out: string[] = [...TYPES_HEADER, ""];
   for (const q of analysis.queries) out.push(emitQueryTypes(q));
   for (const f of analysis.failed) {
     // A query that failed analysis is already an error at its line; keep its callers quiet.
@@ -34,8 +41,7 @@ export function emitTypes(analysis: FileAnalysis): string {
 }
 
 function emitQueryTypes(q: QueryInfo): string {
-  const P = `${pascal(q.name)}Params`;
-  const R = `${pascal(q.name)}Row`;
+  const { params: P, row: R } = typeNames(q.name);
   const lines: string[] = [];
   const params = q.params.map((p) => `  ${prop(p.name)}: ${render(p.type)}${p.nullable ? " | null" : ""};`);
   lines.push(params.length ? `export interface ${P} {\n${params.join("\n")}\n}` : `export type ${P} = Record<string, never>;`);

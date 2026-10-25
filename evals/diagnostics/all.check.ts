@@ -11,4 +11,12 @@ import * as type_mismatch from "./type_mismatch.sql";
 import * as unicode_before from "./unicode_before.sql";
 import * as unknown_column from "./unknown_column.sql";
 import * as unknown_table from "./unknown_table.sql";
+import type { Queryable } from "sqlsure/runtime";
+
+// A query that failed analysis is already an error in its .sql file; its callers must stay quiet,
+// with or without parameters. Errors in this file fail the "callers stay quiet" case.
+declare const db: Queryable;
+void after_param.q(db, { someLongParameterName: "x" });
+void type_mismatch.q(db);
+
 void [after_param, bad_header, duplicate_column, duplicate_name, one_without_rows, positional, stray_text, syntax_error, two_statements, type_mismatch, unicode_before, unknown_column, unknown_table];

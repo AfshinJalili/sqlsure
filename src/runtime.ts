@@ -28,9 +28,15 @@ export interface QueryMeta {
   readonly paramNames: readonly string[];
 }
 
-export type Query<P, R> = ([P] extends [void]
-  ? (db: Queryable) => Promise<R>
-  : (db: Queryable, params: P) => Promise<R>) &
+/**
+ * A query function. `Query<any, any>` (an untyped query, such as one that failed analysis) accepts
+ * parameters or none, so its callers do not pile errors on top of the one in the .sql file.
+ */
+export type Query<P, R> = (0 extends 1 & P
+  ? (db: Queryable, params?: P) => Promise<R>
+  : [P] extends [void]
+    ? (db: Queryable) => Promise<R>
+    : (db: Queryable, params: P) => Promise<R>) &
   QueryMeta;
 
 export interface QuerySpec {

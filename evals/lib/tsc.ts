@@ -115,5 +115,12 @@ export function runDiagnostics(): DiagnosticCase[] {
     const passed = !!actual && actual.includes(`(${expected.line},${expected.col})`) && actual.includes(expected.text);
     cases.push({ id: basename(file, ".sql"), expected, actual, passed });
   }
+  const callerError = lines.find((l) => l.includes("diagnostics/all.check.ts(")) ?? null;
+  cases.push({
+    id: "callers_stay_quiet",
+    expected: { line: 0, col: 0, text: "no error in all.check.ts, which calls failed queries" },
+    actual: callerError,
+    passed: callerError === null,
+  });
   return cases;
 }

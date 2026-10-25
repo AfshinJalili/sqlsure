@@ -62,6 +62,12 @@ const RESERVED = new Set(
 );
 const HEADER_BODY = /^([A-Za-z_$][A-Za-z0-9_$]*)\s+:([A-Za-z]+)\s*$/;
 
+/** The type names a query exports next to its function: `getUser` -> `GetUserParams`, `GetUserRow`. */
+export function typeNames(name: string): { params: string; row: string } {
+  const pascal = name.charAt(0).toUpperCase() + name.slice(1);
+  return { params: `${pascal}Params`, row: `${pascal}Row` };
+}
+
 interface Segment {
   /** Offset in the rewritten SQL where this segment starts. */
   out: number;
@@ -91,6 +97,8 @@ export function parseFile(source: string): ParsedFile {
   }
 
   const seen = new Set<string>();
+  /** Exported type name -> the query that owns it. */
+  const types = new Map<string, string>();
   for (let i = 0; i < headers.length; i++) {
     const h = headers[i];
     const bodyEnd = i + 1 < headers.length ? headers[i + 1].start : source.length;
@@ -128,7 +136,19 @@ export function parseFile(source: string): ParsedFile {
       problems.push({ message: `Duplicate query name "${name}".`, start: h.start, length: h.length, code: CODES.duplicateName });
       continue;
     }
+    const { params, row } = typeNames(name);
+    const owner = types.get(row);
+    if (owner !== undefined) {
+      problems.push({
+        message: `"${name}" would export types ${params} and ${row}, which "${owner}" already exports. Rename one of them.`,
+        start: h.start,
+        length: h.length,
+        code: CODES.duplicateName,
+      });
+      continue;
+    }
     seen.add(name);
+    types.set(params, name).set(row, name);
 
     // Doc comments: `--` lines right after the header.
     const doc: string[] = [];
@@ -305,11 +325,21 @@ function rewrite(
   let out = "";
   let copied = from;
   let failed = false;
+  // One entry per open `[` in code: true for a subscript (`arr[...]`), false for `ARRAY[...]`.
+  const brackets: boolean[] = [];
 
   scan(source, from, to, {
     code(start, end) {
       for (let i = start; i < end; i++) {
         const c = source[i];
+        if (c === "[") {
+          brackets.push(!/\barray\s*$/i.test(source.slice(Math.max(from, i - 16), i)));
+          continue;
+        }
+        if (c === "]") {
+          brackets.pop();
+          continue;
+        }
         if (c === "$" && /[0-9]/.test(source[i + 1] ?? "") && !isIdentChar(source[i - 1])) {
           problems.push({
             message: "Positional parameters ($1) are not supported. Use named parameters like :id.",
@@ -325,8 +355,8 @@ function rewrite(
         if (source[i + 1] === ":" || source[i - 1] === ":" || source[i + 1] === "=") continue;
         const m = /^[A-Za-z_][A-Za-z0-9_]*/.exec(source.slice(i + 1, Math.min(end, i + 128)));
         if (!m) continue;
-        // `arr[a:b]` slices: a colon right after an identifier or `]`/digit inside brackets is a slice.
-        if (insideBrackets(source, from, i)) continue;
+        // `arr[a:b]` slices: inside a subscript, a colon right after a value separates the bounds.
+        if (brackets.at(-1) && isSliceColon(source, from, i)) continue;
         const name = m[0];
         let len = 1 + name.length;
         let nullable = false;
@@ -395,13 +425,11 @@ function stripLiterals(sql: string): string {
   return chars.join("");
 }
 
-function insideBrackets(source: string, from: number, at: number): boolean {
-  let depth = 0;
-  for (let i = from; i < at; i++) {
-    if (source[i] === "[") depth++;
-    else if (source[i] === "]") depth = Math.max(0, depth - 1);
-  }
-  return depth > 0;
+/** True when the nearest non-blank character before `at` ends a value: `1`, `n`, `)`, `]`, a quote. */
+function isSliceColon(source: string, from: number, at: number): boolean {
+  let i = at - 1;
+  while (i >= from && /\s/.test(source[i])) i--;
+  return i >= from && /[A-Za-z0-9_$)\]'"]/.test(source[i]);
 }
 
 function lineStart(s: string, i: number): number {

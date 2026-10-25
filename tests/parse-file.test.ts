@@ -36,6 +36,20 @@ FROM t WHERE a = :a AND b = :b? AND c = :a -- :nope
   assert.match(q.sql, /WHERE a = \$1 AND b = \$2 AND c = \$1/);
 });
 
+test("parameters inside brackets: array constructors and stray brackets in strings or comments", () => {
+  const sqlOf = (body: string) => parseFile(`-- name: q :many\n${body}`).queries[0];
+  const ctor = sqlOf("SELECT * FROM t WHERE id = ANY(ARRAY[:a, :b])");
+  assert.equal(ctor.sql, "SELECT * FROM t WHERE id = ANY(ARRAY[$1, $2])");
+  assert.deepEqual(ctor.params.map((p) => p.name), ["a", "b"]);
+  assert.equal(sqlOf("SELECT * FROM t WHERE name LIKE '[%' AND id = :id").sql, "SELECT * FROM t WHERE name LIKE '[%' AND id = $1");
+  assert.equal(sqlOf("SELECT * FROM t -- see [docs\nWHERE id = :id").sql, "SELECT * FROM t -- see [docs\nWHERE id = $1");
+  assert.equal(sqlOf('SELECT "a[b" FROM t WHERE id = :id').sql, 'SELECT "a[b" FROM t WHERE id = $1');
+  // Inside a subscript, a colon right after a value is a slice; right after `[` it starts a parameter.
+  assert.equal(sqlOf("SELECT arr[:lo:hi] FROM t").sql, "SELECT arr[$1:hi] FROM t");
+  const slice = sqlOf("SELECT arr[1:n], arr[lo:hi], arr[:n] FROM t WHERE id = :id");
+  assert.equal(slice.sql, "SELECT arr[1:n], arr[lo:hi], arr[$1] FROM t WHERE id = $2");
+});
+
 test("offsets map back to the original file", () => {
   const source = `-- name: q :one\nSELECT x FROM t WHERE id = :someLongName AND bogus = 1`;
   const [q] = parseFile(source).queries;
@@ -54,6 +68,7 @@ test("problems", () => {
     ["-- name: q :exec\nDELETE FROM a; DELETE FROM b", /One statement/],
     ["-- name: q :one\n", /no SQL/],
     ["-- name: delete :exec\nDELETE FROM a", /reserved word/],
+    ["-- name: getUser :one\nSELECT 1;\n-- name: GetUser :one\nSELECT 2", /GetUserRow.*getUser/],
   ];
   for (const [source, message] of cases) {
     const f = parseFile(source);

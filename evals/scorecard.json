@@ -1,6 +1,6 @@
 {
-  "date": "2026-10-24T22:54:05.519Z",
-  "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "date": "2026-10-25T12:57:00.961Z",
+  "postgres": "16.14",
   "thresholds": {
     "soundnessViolations": 0,
     "breadthPercent": 90,
@@ -11,15 +11,15 @@
   },
   "soundness": {
     "violations": [],
-    "valuesChecked": 32748,
-    "rowsChecked": 13652,
-    "queriesExecuted": 549,
-    "schemas": 285
+    "valuesChecked": 33495,
+    "rowsChecked": 13863,
+    "queriesExecuted": 551,
+    "schemas": 286
   },
   "precision": {
-    "labeledNonnull": 99,
-    "inferredNonnull": 86,
-    "percent": 86.86868686868686,
+    "labeledNonnull": 100,
+    "inferredNonnull": 87,
+    "percent": 87,
     "misses": [
       "shop.categoryTree.id",
       "shop.categoryTree.name",
@@ -37,9 +37,9 @@
     ]
   },
   "breadth": {
-    "percent": 97.07495429616088,
-    "typed": 531,
-    "acceptedByPostgres": 547,
+    "percent": 97.08029197080292,
+    "typed": 532,
+    "acceptedByPostgres": 548,
     "refusedByDesign": 16,
     "corpus": {
       "source": "sqlc-dev/sqlc internal/endtoend/testdata",
@@ -65,9 +65,9 @@
           "count": 1
         }
       ],
-      "rejectedByPostgres": 21,
-      "acceptedByPostgres": 547,
-      "typed": 531,
+      "rejectedByPostgres": 20,
+      "acceptedByPostgres": 548,
+      "typed": 532,
       "failures": [
         {
           "case": "cte_count/pgx/v4",
@@ -204,7 +204,7 @@
       },
       {
         "id": "naming",
-        "description": "Schema-qualified tables, quoted identifiers, views (view columns are conservatively nullable)",
+        "description": "Schema-qualified tables, quoted identifiers, views (view columns are conservatively nullable), queries named like sqlsure types",
         "passed": true,
         "errors": []
       },
@@ -234,7 +234,7 @@
       }
     ],
     "negativeControlFailed": true,
-    "ms": 1243.2088930000318
+    "ms": 1042.4826760000142
   },
   "diagnostics": [
     {
@@ -366,6 +366,16 @@
       },
       "actual": "evals/diagnostics/unknown_table.sql(3,15): error sqlsure10: relation \"missing\" does not exist",
       "passed": true
+    },
+    {
+      "id": "callers_stay_quiet",
+      "expected": {
+        "line": 0,
+        "col": 0,
+        "text": "no error in all.check.ts, which calls failed queries"
+      },
+      "actual": null,
+      "passed": true
     }
   ],
   "mutations": [
@@ -391,13 +401,13 @@
       "id": "trust-computed-columns",
       "description": "treat every computed expression as non-null",
       "killed": true,
-      "violations": 38
+      "violations": 40
     },
     {
       "id": "ignore-not-null-constraints",
       "description": "treat every table column as NOT NULL",
       "killed": true,
-      "violations": 35
+      "violations": 34
     },
     {
       "id": "int8-as-number",
@@ -421,7 +431,7 @@
       "id": "non-null-array-elements",
       "description": "assume array elements are never NULL",
       "killed": true,
-      "violations": 2
+      "violations": 3
     }
   ],
   "perf": {
@@ -429,33 +439,33 @@
       {
         "queries": 10,
         "files": 1,
-        "warmMs": 1224.6650390000432,
-        "coldMs": 3487.8898710000212,
-        "baselineMs": 140.4819070000085,
-        "perQueryMs": 108.41831320000347
+        "warmMs": 977.214432000008,
+        "coldMs": 2926.416315999988,
+        "baselineMs": 120.75030599994352,
+        "perQueryMs": 85.64641260000644
       },
       {
         "queries": 100,
         "files": 10,
-        "warmMs": 1464.1038819999667,
-        "coldMs": 4065.5989320000517,
-        "baselineMs": 136.93882899999153,
-        "perQueryMs": 13.271650529999752
+        "warmMs": 1225.7346170000383,
+        "coldMs": 3264.7043309999863,
+        "baselineMs": 134.8238850000198,
+        "perQueryMs": 10.909107320000185
       },
       {
         "queries": 1000,
         "files": 100,
-        "warmMs": 2409.7811689999653,
-        "coldMs": 4714.440232999972,
-        "baselineMs": 142.477600000042,
-        "perQueryMs": 2.2673035689999232
+        "warmMs": 2169.0031470000395,
+        "coldMs": 3945.6688420000137,
+        "baselineMs": 119.81733699998586,
+        "perQueryMs": 2.0491858100000537
       }
     ],
     "runtime": {
       "calls": 3000,
-      "rawMsPerCall": 0.07061336566666918,
-      "sqlsureMsPerCall": 0.07178920566667027,
-      "overheadUsPerCall": 1.1758400000010938
+      "rawMsPerCall": 0.21047383100000056,
+      "sqlsureMsPerCall": 0.21348734333333172,
+      "overheadUsPerCall": 3.013512333331164
     }
   },
   "suites": [
@@ -467,8 +477,8 @@
       "executedQueries": 23,
       "runs": 534,
       "erroredRuns": 54,
-      "rowsChecked": 1254,
-      "valuesChecked": 5572,
+      "rowsChecked": 1243,
+      "valuesChecked": 5512,
       "labeled": {
         "nonnull": 58,
         "nonnullInferredNonnull": 53,
@@ -487,19 +497,19 @@
     },
     {
       "suite": "traps",
-      "queries": 32,
-      "analyzed": 32,
+      "queries": 33,
+      "analyzed": 33,
       "analysisProblems": [],
-      "executedQueries": 32,
-      "runs": 129,
+      "executedQueries": 33,
+      "runs": 132,
       "erroredRuns": 2,
-      "rowsChecked": 1398,
-      "valuesChecked": 2820,
+      "rowsChecked": 1420,
+      "valuesChecked": 2858,
       "labeled": {
-        "nonnull": 41,
-        "nonnullInferredNonnull": 33,
-        "nullable": 32,
-        "nullableInferredNullable": 32
+        "nonnull": 42,
+        "nonnullInferredNonnull": 34,
+        "nullable": 34,
+        "nullableInferredNullable": 34
       },
       "precisionMisses": [
         "traps.viewColumns.id",
@@ -511,8 +521,8 @@
         "traps.castOfColumn.id_text",
         "traps.castOfColumn.short"
       ],
-      "inferredNonnull": 33,
-      "columns": 73
+      "inferredNonnull": 34,
+      "columns": 76
     }
   ],
   "checks": [
@@ -524,13 +534,13 @@
     },
     {
       "name": "Precision: truly non-null columns typed non-null",
-      "value": "86.9% (86/99)",
+      "value": "87.0% (87/100)",
       "threshold": "≥ 85%",
       "passed": true
     },
     {
       "name": "Breadth: real-world queries typed (sqlc corpus)",
-      "value": "97.1% (531/547)",
+      "value": "97.1% (532/548)",
       "threshold": "≥ 90%",
       "passed": true
     },
