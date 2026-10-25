@@ -27,20 +27,18 @@ Watch it with `gh run watch`. When it is green, `npm view sqlsure version` shows
 
 sqlsure follows semver. While it is 0.x, a change that alters the generated types of existing queries (a column becoming non-null, a new type mapping) is a minor release; fixes that only remove errors are patches.
 
-## One-time setup (before the first release)
+## One-time setup: trusted publishing
 
-npm requires two-factor authentication to publish, and trusted publishing can only be configured for a package that already exists. So the first version is published by hand:
+0.1.0 was published by hand on 2026-10-25. Before the workflow can publish later versions, npm must trust it. npm refuses to configure this with a token that bypasses two-factor authentication, so do it on the website:
 
-1. Turn on two-factor authentication on npmjs.com (Account → Two-Factor Authentication).
-2. From a clean checkout of the tagged commit, publish the first version:
-   ```sh
-   git switch --detach v0.1.0
-   npm publish --access public --otp=<code from your authenticator>
-   ```
-3. Let the release workflow publish every later version:
-   ```sh
-   npm trust github sqlsure --repo AfshinJalili/sqlsure --file release.yml --allow-publish
-   ```
-4. Re-run the release workflow for `v0.1.0` (`gh run rerun <run-id> --failed`). It sees 0.1.0 is already on npm, skips publishing, and creates the GitHub Release.
+1. On https://www.npmjs.com/package/sqlsure/access, under **Trusted Publisher**, choose **GitHub Actions**.
+2. Enter organization or user `AfshinJalili`, repository `sqlsure` and workflow filename `release.yml`; leave the environment empty.
+3. Save. If npm asks for two-factor authentication, turn it on first (Account → Two-Factor Authentication).
+
+With an npm session that has 2FA, the command line does the same thing:
+
+```sh
+npm trust github sqlsure --repo AfshinJalili/sqlsure --file release.yml --allow-publish
+```
 
 npm attaches provenance only to packages published from public repositories.
