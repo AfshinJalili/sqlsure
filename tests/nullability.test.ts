@@ -97,3 +97,26 @@ RETURNING t.id AS t_id, s.label AS s_label;
     await e.close();
   }
 });
+
+test("expressions in RETURNING are proven like expressions in a select list", async () => {
+  const e = await Engine.create();
+  try {
+    await e.loadSchema("create table a (id int primary key, label text not null);");
+    const r = await analyzeFile(
+      `-- name: ins :one
+INSERT INTO a VALUES (1, 'x') RETURNING id, 1 AS one, (label IS NULL) AS t, nullif(label, '') AS maybe;
+-- name: del :one
+DELETE FROM a RETURNING 'gone' AS what;
+`,
+      e,
+    );
+    assert.deepEqual(r.problems, []);
+    const nullability = Object.fromEntries(
+      r.queries.map((q) => [q.name, Object.fromEntries(q.columns.map((c) => [c.name, c.nullable]))]),
+    );
+    assert.deepEqual(nullability.ins, { id: false, one: false, t: false, maybe: true });
+    assert.deepEqual(nullability.del, { what: false });
+  } finally {
+    await e.close();
+  }
+});

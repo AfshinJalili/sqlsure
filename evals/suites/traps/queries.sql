@@ -120,3 +120,6 @@ MERGE INTO other.a t USING a s ON s.id = t.id
 WHEN MATCHED THEN UPDATE SET note = s.label
 WHEN NOT MATCHED BY SOURCE THEN UPDATE SET note = t.note
 RETURNING t.id, t.note, s.label;
+
+-- name: returningExpressions :many
+UPDATE a SET n = n + 1 WHERE id = :id RETURNING id, 'updated' AS action, (label IS NULL) AS no_label, now() AS at;

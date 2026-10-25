@@ -6,6 +6,7 @@ All notable changes to sqlsure are listed here. The format follows [Keep a Chang
 
 ### Fixed
 
+- Expressions in `RETURNING` (`RETURNING 1 AS one`, `… IS NULL`, `now()`) were always typed nullable: the parser moved `RETURNING` to a new field in Postgres 18's grammar, and sqlsure still read the old one.
 - `MERGE … RETURNING` typed the source's columns non-null, but rows from `WHEN NOT MATCHED BY SOURCE` have no source row, so Postgres returns NULL for them.
 - An expression grouped by `ROLLUP`, `CUBE` or `GROUPING SETS` (a literal, `COALESCE(…)`, `x IS NULL`, or a cast of one) was typed non-null, but Postgres returns NULL for it in subtotal rows. Grouping keys are now matched the way Postgres matches them: by output name, by position, and ignoring column qualifiers and casts.
 

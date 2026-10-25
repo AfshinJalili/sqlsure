@@ -117,7 +117,7 @@ function expressionFacts(stmt: Node, columnCount: number): (boolean | undefined)
     if (targets) keys = groupingKeys(s.groupClause ?? [], targets);
   } else {
     const dml = stmt.InsertStmt ?? stmt.UpdateStmt ?? stmt.DeleteStmt ?? stmt.MergeStmt;
-    targets = dml?.returningList;
+    targets = dml?.returningClause?.exprs;
   }
   if (!targets) return null;
   // `*`, `t.*` and `(composite).*` expand to any number of columns. Targets before the first one
