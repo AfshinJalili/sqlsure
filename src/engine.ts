@@ -281,6 +281,8 @@ function cacheFile(): string {
 }
 
 const require = createRequire(import.meta.url);
+/** sqlsure's own package.json: src/ and dist/ both sit one level below it. */
+const OWN_PACKAGE: { peerDependencies?: Record<string, string> } = require("../package.json");
 const PGLITE_VERSION: string = (() => {
   try {
     const main = require.resolve("@electric-sql/pglite");
@@ -321,21 +323,50 @@ const CONTRIB = new Set([
   "tablefunc", "tcn", "tsm_system_rows", "tsm_system_time", "unaccent", "uuid_ossp",
 ]);
 
+/**
+ * Extensions PGlite publishes as separate packages, by the name CREATE EXTENSION uses. They are
+ * optional peer dependencies of sqlsure, at the versions its package.json names: a project whose
+ * schema creates one installs that package.
+ */
+const PACKAGED = new Map([
+  ["vector", "@electric-sql/pglite-pgvector"],
+  ["postgis", "@electric-sql/pglite-postgis"],
+  ["age", "@electric-sql/pglite-age"],
+  ["pg_hashids", "@electric-sql/pglite-pg_hashids"],
+  ["pg_ivm", "@electric-sql/pglite-pg_ivm"],
+  ["pg_textsearch", "@electric-sql/pglite-pg_textsearch"],
+  ["pg_uuidv7", "@electric-sql/pglite-pg_uuidv7"],
+  ["pgtap", "@electric-sql/pglite-pgtap"],
+]);
+
 export function extensionsIn(schemaSql: string): string[] {
   const names = new Set<string>();
   for (const m of schemaSql.matchAll(/create\s+extension\s+(?:if\s+not\s+exists\s+)?"?([A-Za-z0-9_-]+)"?/gi))
     names.add(m[1].toLowerCase().replace(/-/g, "_"));
-  return [...names].filter((n) => CONTRIB.has(n)).sort();
+  return [...names].filter((n) => CONTRIB.has(n) || PACKAGED.has(n)).sort();
 }
 
 async function loadExtensions(names: string[]): Promise<Record<string, any>> {
   const out: Record<string, any> = {};
   for (const name of names) {
-    if (!CONTRIB.has(name)) continue;
-    const mod = await import(`@electric-sql/pglite/contrib/${name}`);
-    out[name] = mod[name];
+    const pkg = PACKAGED.get(name);
+    if (CONTRIB.has(name)) out[name] = (await import(`@electric-sql/pglite/contrib/${name}`))[name];
+    else if (pkg) out[name] = (await importPackaged(name, pkg))[name];
   }
   return out;
+}
+
+async function importPackaged(name: string, pkg: string): Promise<Record<string, any>> {
+  try {
+    return await import(pkg);
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code !== "ERR_MODULE_NOT_FOUND" || !err.message?.includes(pkg)) throw e;
+    const version = OWN_PACKAGE.peerDependencies?.[pkg];
+    throw new Error(
+      `the schema creates extension "${name}", which sqlsure's Postgres loads from a separate package. Install it: npm install -D ${pkg}${version ? `@${version}` : ""}`,
+    );
+  }
 }
 
 function toPostgresError(e: unknown): PostgresError {

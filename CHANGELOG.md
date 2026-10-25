@@ -4,6 +4,10 @@ All notable changes to sqlsure are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Added
+
+- pgvector, PostGIS, `pg_uuidv7`, `pg_hashids`, `pg_ivm`, `age`, `pgtap` and `pg_textsearch`: sqlsure loads them from PGlite's extension packages when the schema creates them. They are optional peer dependencies; a missing one is reported with the package and version to install.
+
 ### Changed
 
 - More columns are proven non-null, so some `| null` disappear from generated types. Column references are traced to the FROM item they name, so one side of a self-join is no longer made nullable by the other. Casts, arithmetic, comparisons, `||`, `AND`/`OR`/`NOT`, `GREATEST`/`LEAST`, `IS DISTINCT FROM` and common built-in functions of non-null columns are non-null. Columns merged by `USING` and `NATURAL` follow their side of the join. A function, operator or cast the schema defines under a built-in's name is not trusted.

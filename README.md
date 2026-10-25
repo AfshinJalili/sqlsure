@@ -50,6 +50,8 @@ Point sqlsure at your schema in `tsconfig.json`. The schema can be a `.sql` file
 }
 ```
 
+**Extensions.** Postgres contrib extensions that PGlite ships (`citext`, `hstore`, `ltree`, `pg_trgm`, `pgcrypto`, `uuid-ossp` and more) load when your schema runs `CREATE EXTENSION`. pgvector, PostGIS, `pg_uuidv7`, `pg_hashids`, `pg_ivm`, `age`, `pgtap` and `pg_textsearch` come as separate PGlite packages. Install the one your schema needs, for example `npm install -D @electric-sql/pglite-pgvector`; if it is missing, sqlsure's error names the package and version.
+
 Type-check with `--runExternalCode`, the flag that lets `tsc` run content mappers:
 
 ```sh
@@ -189,7 +191,7 @@ CI runs all of it on every push. The full report, including every precision miss
 - **Two output columns with the same name are refused** (`SELECT a.id, b.id …`): node-postgres keeps only one of them, so no honest type exists. Rename one with `AS`.
 - **No dynamic SQL**: optional filters and `IN` lists of varying length need a fixed shape (`= ANY(:ids)` works).
 - **JSON arrays as parameters** must be passed pre-stringified, because `pg` turns JS arrays into Postgres arrays.
-- **Extensions**: the ones PGlite ships (`citext`, `hstore`, `ltree`, `pg_trgm`, `pgcrypto`, `uuid-ossp` and more) load when your schema creates them; others (PostGIS, pgvector) are not available yet.
+- **Extensions** that PGlite does not provide (contrib or packaged, see [Setup](#setup)) cannot be loaded, so a schema that creates one fails to load. Extension types such as `vector` and `geometry` are typed `string`, the text `pg` returns for them.
 - **TypeScript 7.1 beta** is required: content mappers are new in it. In editors, the TypeScript 7 language server runs them.
 
 ## Performance
