@@ -14,6 +14,7 @@ The code is TypeScript run directly by Node (type stripping). Use a Node version
 | `src/parse-file.ts` | Splits a `.sql` file into named queries and rewrites `:params` to `$n`. Shared by `tsc` and the run-time hook. |
 | `src/engine.ts` | The in-process Postgres (PGlite) holding the schema; describes statements. |
 | `src/nullability.ts` | Decides which output columns can never be NULL. |
+| `src/sql-parser.ts` | Postgres' own parser (libpg-query), loaded once. |
 | `src/pgtypes.ts` | What `pg` returns and accepts for each Postgres type. |
 | `src/analyze.ts` | Combines the above into typed query descriptions. |
 | `src/emit.ts` | The TypeScript `tsc` sees, and the JavaScript Node loads. |
