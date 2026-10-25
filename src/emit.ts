@@ -1,6 +1,6 @@
 // The TypeScript the checker sees for a .sql file, and the JavaScript the runtime loads for it.
 import type { FileAnalysis, QueryInfo } from "./analyze.ts";
-import { typeNames, type ParsedFile } from "./parse-file.ts";
+import { parseFile, typeNames, type ParsedFile } from "./parse-file.ts";
 import { render } from "./pgtypes.ts";
 
 const RUNTIME = "sqlsure/runtime";
@@ -64,6 +64,17 @@ export function emitRuntime(parsed: ParsedFile): string {
     out.push(`export const ${q.name} = defineQuery(${JSON.stringify(spec)});`);
   }
   return out.join("\n") + "\n";
+}
+
+/** The JavaScript module a .sql file is at run time. Throws on a file that does not parse. */
+export function compileSqlModule(source: string, path: string): string {
+  const parsed = parseFile(source);
+  if (parsed.problems.length) {
+    const p = parsed.problems[0];
+    const line = source.slice(0, p.start).split("\n").length;
+    throw new SyntaxError(`sqlsure: ${path}:${line}: ${p.message}`);
+  }
+  return emitRuntime(parsed);
 }
 
 /** The module a schema file becomes: nothing, so that importing or including it is harmless. */

@@ -3,18 +3,7 @@
 import { registerHooks } from "node:module";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { parseFile } from "./parse-file.ts";
-import { emitRuntime } from "./emit.ts";
-
-export function compileSqlModule(source: string, path: string): string {
-  const parsed = parseFile(source);
-  if (parsed.problems.length) {
-    const p = parsed.problems[0];
-    const line = source.slice(0, p.start).split("\n").length;
-    throw new SyntaxError(`sqlsure: ${path}:${line}: ${p.message}`);
-  }
-  return emitRuntime(parsed);
-}
+import { compileSqlModule } from "./emit.ts";
 
 registerHooks({
   load(url, context, nextLoad) {

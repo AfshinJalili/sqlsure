@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseFile } from "../src/parse-file.ts";
-import { compileSqlModule } from "../src/register.ts";
+import { compileSqlModule } from "../src/emit.ts";
 import { defineQuery } from "../src/runtime.ts";
 
 test("named queries, modes and docs", () => {
