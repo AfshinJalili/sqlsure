@@ -20,8 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The oldest supported version of each line, and the latest.
-        node: ["22.22.0", "22", "24.10.0", "24"]
+        # The oldest supported version of each line, the latest of each, and the newest line.
+        node: ["22.22.0", "22", "24.10.0", "24", "26"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -39,7 +39,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ["22.22.0", "24.10.0", "24"]
+        node: ["22.22.0", "24.10.0", "24", "26"]
     services:
       postgres:
         image: postgres:17

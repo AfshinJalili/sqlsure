@@ -32,7 +32,7 @@ sqlsure is a [TypeScript 7.1 content mapper](https://github.com/microsoft/typesc
 
 ## Setup
 
-Requires TypeScript 7.1 (`typescript@beta`) and Node 22.22+ or 24.10+.
+Requires TypeScript 7.1 (`typescript@beta`) and Node 22.22+, 24.10+ or 26.
 
 ```sh
 npm install sqlsure pg

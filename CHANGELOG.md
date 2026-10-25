@@ -6,6 +6,7 @@ All notable changes to sqlsure are listed here. The format follows [Keep a Chang
 
 ### Added
 
+- Node 26 is tested in CI, alongside the oldest and latest supported Node 22 and 24.
 - `.sql` imports outside Node's `--import` hook: `sqlsure/vite` for Vitest, Vite and Rollup, `sqlsure/esbuild` for esbuild and tsup, and `sqlsure/bun` for Bun. The example project runs a Vitest test and a Bun script, and the smoke test checks both.
 - pgvector, PostGIS, `pg_uuidv7`, `pg_hashids`, `pg_ivm`, `age`, `pgtap` and `pg_textsearch`: sqlsure loads them from PGlite's extension packages when the schema creates them. They are optional peer dependencies; a missing one is reported with the package and version to install.
 

@@ -2,7 +2,7 @@
 
 Releases are cut by pushing a version tag. [`.github/workflows/release.yml`](./.github/workflows/release.yml) then:
 
-1. runs every CI job (unit tests and the packed-tarball smoke test on the oldest and latest supported Node 22 and 24, and the full eval suite with its thresholds);
+1. runs every CI job (unit tests and the packed-tarball smoke test on the oldest and latest supported Node 22 and 24 and on Node 26, and the full eval suite with its thresholds);
 2. checks the tag matches `package.json` and that `CHANGELOG.md` has a section for the version;
 3. publishes to npm with [trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC, no stored token);
 4. creates a GitHub Release whose notes are that `CHANGELOG.md` section.
