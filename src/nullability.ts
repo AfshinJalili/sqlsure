@@ -10,15 +10,8 @@
 //    parts: literals, count(*), COALESCE, casts and operators of non-null values, and so on.
 // 2. The column's origin, which Postgres reports for plain table columns even through subqueries
 //    and CTEs. It is trusted only when that table is on no nullable side anywhere in the statement.
-import { loadModule, parseSync } from "libpg-query";
 import type { Engine, FieldDescription, Overrides } from "./engine.ts";
-
-let loaded: Promise<void> | undefined;
-export function ready(): Promise<void> {
-  return (loaded ??= loadModule());
-}
-
-type Node = Record<string, any>;
+import { parse, type ParseNode as Node } from "./sql-parser.ts";
 
 /**
  * Deliberate bugs the eval harness switches on one at a time, to prove its oracle catches each of
@@ -28,8 +21,7 @@ export const mutations = new Set<string>();
 
 /** For each output column Postgres described for `sql`, whether it can never be NULL. */
 export async function outputNotNull(sql: string, fields: FieldDescription[], engine: Engine): Promise<boolean[]> {
-  await ready();
-  const stmt: Node = (parseSync(sql) as Node).stmts?.[0]?.stmt ?? {};
+  const stmt: Node = (await parse(sql)).stmts?.[0]?.stmt ?? {};
   const facts = await statementFacts(stmt, engine);
   const ctx: Context = { engine, facts, scope: await scopeOf(stmt, facts, engine), nulled: groupingNulled(stmt) };
   const targets = alignedTargets(stmt, fields.length);
