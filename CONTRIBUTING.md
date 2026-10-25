@@ -7,7 +7,7 @@ npm test            # unit tests (node --test, no database needed)
 npm run build       # dist/, what the package ships
 ```
 
-The code is TypeScript run directly by Node (type stripping), so Node 22.18 or later is needed.
+The code is TypeScript run directly by Node (type stripping). Use a Node version from `engines` in package.json.
 
 | File | Concern |
 | --- | --- |

@@ -32,7 +32,7 @@ sqlsure is a [TypeScript 7.1 content mapper](https://github.com/microsoft/typesc
 
 ## Setup
 
-Requires TypeScript 7.1 (`typescript@beta`) and Node 22.18 or later.
+Requires TypeScript 7.1 (`typescript@beta`) and Node 22.22+ or 24.10+.
 
 ```sh
 npm install sqlsure pg
@@ -65,6 +65,8 @@ node --import sqlsure/register app.ts
 In VS Code, install the TypeScript 7 extension (`TypeScriptTeam.native-preview`) and set `"js/ts.experimental.useTsgo": true`.
 
 A complete project is in [`examples/basic`](./examples/basic).
+
+> **Troubleshooting.** `error TS18069: The content mapper 'sqlsure' failed to transform this file. The content mapper process failed while handling the project request` usually means Node is too old: before 22.22 and 24.10, TypeScript 7's `tsc` launcher starts the compiler with an empty environment, so it cannot find `node` to run any content mapper. Upgrade Node.
 
 > **Security.** `--runExternalCode` lets `tsc` run the content mappers your `tsconfig.json` names. sqlsure runs your schema SQL inside its private in-process Postgres and nothing else; it never connects to a database. Only pass the flag for projects whose `contentMappers` you trust.
 

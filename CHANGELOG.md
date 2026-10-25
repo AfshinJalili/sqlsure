@@ -16,6 +16,7 @@ First release.
 - Provable nullability: NOT NULL columns stay non-null unless an outer join, grouping set or set operation can make them NULL; `count`, `EXISTS`, ranking windows, literals and `COALESCE` of those are non-null.
 - Postgres errors reported at the exact line and column in the `.sql` file.
 - `sqlsure/register`: a Node module hook that loads `.sql` files at run time, with no schema and no database.
+- Supports Node 22.22+ and 24.10+. Older versions start TypeScript 7's compiler with an empty environment, which breaks every content mapper.
 - Eval suite: a soundness oracle against real Postgres and `pg`, precision against hand-labeled ground truth, breadth on sqlc's end-to-end corpus, mutation testing, diagnostics positions, and a smoke test of the packed tarball.
 
 [Unreleased]: https://github.com/AfshinJalili/sqlsure/compare/v0.1.0...HEAD

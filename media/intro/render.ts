@@ -42,18 +42,28 @@ function capture(): void {
 
   // The type of `user`, as tsc prints it in an error.
   const reveal = join(DEMO, "src/__reveal.ts");
-  writeFileSync(reveal, `import { getUser } from "./users.sql";\ndeclare const pool: import("pg").Pool;\nconst user = await getUser(pool, { id: 42 });\nconst probe: never = user;\nexport {};\n`);
+  writeFileSync(
+    reveal,
+    `import { getUser } from "./users.sql";
+declare const pool: import("pg").Pool;
+const user = await getUser(pool, { id: 42 });
+type Expand<T> = T extends infer O ? { [K in keyof O]: O[K] } : never;
+const named: never = user;
+const members: never = null as unknown as Expand<NonNullable<typeof user>>;
+export {};
+`,
+  );
   let revealed: string;
   try {
     revealed = tscIn(DEMO, false);
   } finally {
     rmSync(reveal);
   }
-  const type = /Type '(.*)' is not assignable to type 'never'/.exec(revealed)?.[1];
-  if (!type) throw new Error(`could not read the type of user:\n${revealed}`);
-  const m = /^\{ (.*); \} \| null$/.exec(type);
-  if (!m) throw new Error(`unexpected type shape: ${type}`);
-  const hoverType = `const user: {\n${m[1].split("; ").map((f) => `    ${f};`).join("\n")}\n} | null`;
+  const types = [...revealed.matchAll(/error TS2322: Type '(.*)' is not assignable to type 'never'/g)].map((x) => x[1]);
+  const m = /^\{ (.*); \}$/.exec(types[1] ?? "");
+  if (types.length !== 2 || !m) throw new Error(`could not read the type of user:\n${revealed}`);
+  const rowName = types[0].replace(/ \| null$/, "");
+  const hoverType = `const user: ${types[0]}\n\ninterface ${rowName} {\n${m[1].split("; ").map((f) => `    ${f};`).join("\n")}\n}`;
 
   // Drop the column and keep tsc's own report.
   const schemaPath = join(DEMO, "db/schema.sql");
@@ -67,7 +77,8 @@ function capture(): void {
   }
   // Strip ANSI colors and the blank line tsc prints between blocks; the page colors it itself.
   const tscOutput = broken.replace(/\x1b\[[0-9;]*m/g, "").replace(/\n{2,}/g, "\n").trim();
-  if (!tscOutput.includes('column "display_name" does not exist')) throw new Error(`unexpected tsc output:\n${broken}`);
+  const at = /users\.sql:(\d+):\d+ - error \w+: column "display_name" does not exist/.exec(tscOutput);
+  if (!at) throw new Error(`unexpected tsc output:\n${broken}`);
 
   const card = JSON.parse(readFileSync(join(ROOT, "evals/scorecard.json"), "utf8"));
   const killed = card.mutations.filter((x: { killed: boolean }) => x.killed).length;
@@ -81,6 +92,7 @@ function capture(): void {
     droppedLine,
     command: "tsc --noEmit --runExternalCode",
     tscOutput,
+    errorLine: Number(at[1]),
     hoverType,
     evidence: [
       {
@@ -149,8 +161,10 @@ async function chrome() {
   await page("Page.enable");
   return {
     page,
-    close: () => {
+    close: async () => {
+      const exited = new Promise((r) => proc.once("exit", r));
       proc.kill();
+      await exited;
       rmSync(userDir, { recursive: true, force: true });
     },
   };
@@ -205,7 +219,7 @@ async function render(stills: number[] | null): Promise<void> {
     await done;
     console.log(`wrote ${OUT}`);
   } finally {
-    close();
+    await close();
   }
 }
 

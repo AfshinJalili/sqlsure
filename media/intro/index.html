@@ -121,19 +121,23 @@
     <div class="tab"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="name">app.ts</span></div>
     <pre id="tsCode"></pre>
   </div>
-  <div class="hover" id="hover" style="left:1010px; top:560px"></div>
+  <div class="hover" id="hover" style="left:1010px; top:612px"></div>
 </section>
 
 <!-- 3. Change the schema -->
 <section class="scene" id="s3">
   <div class="caption">Drop a column.</div>
   <div class="sub">Every query that uses it fails tsc, at the exact line in the .sql file.</div>
-  <div class="pane" id="schemaPane" style="left:110px; top:262px; width:1000px; height:390px">
+  <div class="pane" id="schemaPane" style="left:110px; top:262px; width:960px; height:390px">
     <div class="tab"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="name">db/schema.sql</span></div>
     <div style="position:relative">
       <div class="strike-row" id="strikeRow" style="top:118px"></div>
       <pre id="schemaCode"></pre>
     </div>
+  </div>
+  <div class="pane" id="sqlPane3" style="left:1100px; top:262px; width:710px; height:390px">
+    <div class="tab"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="name">src/users.sql</span></div>
+    <pre id="sqlCode3"></pre>
   </div>
   <div class="pane" id="termPane" style="left:110px; top:682px; width:1700px; height:330px">
     <div class="tab"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="name">terminal</span></div>
@@ -145,7 +149,7 @@
 <section class="scene" id="s4">
   <div class="stmt big" id="st1" style="top:250px"><span class="x">No</span> codegen.</div>
   <div class="stmt big" id="st2" style="top:380px"><span class="x">No</span> generated files.</div>
-  <div class="stmt mid" id="st3" style="top:560px">A real Postgres, compiled to WebAssembly and running inside tsc,<br>checks every query against your schema.</div>
+  <div class="stmt mid" id="st3" style="top:560px">A real Postgres, compiled to WebAssembly, runs beside tsc<br>and checks every query against your schema.</div>
   <div class="stmt mid" id="st4" style="top:720px; color: var(--text)">Any SQL Postgres accepts works. Every error is Postgres' own.</div>
 </section>
 
@@ -215,7 +219,8 @@
   }
 
   // Timeline, in seconds.
-  const T = { s1: [0, 4.6], s2: [4.4, 14.6], s3: [14.4, 25.4], s4: [25.2, 31.6], s5: [31.4, 40.6], s6: [40.4, 46] };
+  // Scenes do not overlap: each fades out before the next fades in, so text never ghosts.
+  const T = { s1: [0, 4.6], s2: [4.6, 14.6], s3: [14.6, 25.4], s4: [25.4, 31.6], s5: [31.6, 40.6], s6: [40.6, 46] };
   window.DURATION = 46;
 
   window.setTime = function (t) {
@@ -252,7 +257,12 @@
     if (show("s3", t, ...T.s3) > 0) {
       const b = T.s3[0];
       rise($("schemaPane"), seg(t, b + 0.2, b + 0.8), 30);
+      rise($("sqlPane3"), seg(t, b + 0.3, b + 0.9), 30);
       rise($("termPane"), seg(t, b + 0.4, b + 1.0), 30);
+      // tsc's error lands in the .sql file: squiggle the column once the output is printed.
+      const squiggled = t >= b + 5.3;
+      $("sqlCode3").innerHTML = typed(C.usersSql, "sql", C.usersSql.length, false, (i, line, html) =>
+        squiggled && i === C.errorLine - 1 ? html.replace("display_name", '<span class="squiggle">display_name</span>') : html);
       const del = seg(t, b + 1.8, b + 2.6);
       const target = C.droppedLine;
       const lines = C.schemaSql.split("\n");
@@ -291,7 +301,7 @@
       const rows = $("rows");
       if (!rows.children.length) {
         rows.innerHTML = C.evidence.map((r, i) =>
-          `<div class="row" style="top:${300 + i * 160}px"><div class="num"></div><div class="label">${esc(r.label)}<small>${esc(r.detail)}</small></div></div>`).join("");
+          `<div class="row" style="top:${340 + i * 160}px"><div class="num"></div><div class="label">${esc(r.label)}<small>${esc(r.detail)}</small></div></div>`).join("");
       }
       C.evidence.forEach((r, i) => {
         const p = seg(t, b + 1.0 + i * 1.2, b + 1.9 + i * 1.2);
@@ -316,7 +326,7 @@
 
   function colorTsc(line) {
     let html = esc(line);
-    html = html.replace(/(error TS\w+)/, '<span class="err">$1</span>');
+    html = html.replace(/(error \w+\d+)/, '<span class="err">$1</span>');
     html = html.replace(/^(\S+\.sql)(:\d+:\d+)/, '<span class="t">$1</span><span class="p">$2</span>');
     html = html.replace(/^(\s*)(~+)$/, '$1<span class="err">$2</span>');
     html = html.replace(/^(Found .*)$/, '<span class="c">$1</span>');
