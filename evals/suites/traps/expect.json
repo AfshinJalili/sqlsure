@@ -156,5 +156,10 @@
     "scope": "nonnull",
     "label": "nullable",
     "cnt": "nonnull"
+  },
+  "mergeNotMatchedBySource": {
+    "id": "nonnull",
+    "note": "nonnull",
+    "label": "nullable"
   }
 }

@@ -68,3 +68,32 @@ SELECT coalesce(n, 0) AS c FROM a GROUP BY c;
     await e.close();
   }
 });
+
+test("MERGE ... WHEN NOT MATCHED BY SOURCE makes the source nullable in RETURNING", async () => {
+  const e = await Engine.create();
+  try {
+    await e.loadSchema(`create table t (id int primary key, label text not null);
+      create table s (id int primary key, label text not null);`);
+    const r = await analyzeFile(
+      `-- name: bySource :many
+MERGE INTO t USING s ON s.id = t.id
+WHEN MATCHED THEN UPDATE SET label = s.label
+WHEN NOT MATCHED BY SOURCE THEN DELETE
+RETURNING t.id AS t_id, s.label AS s_label;
+-- name: byTarget :many
+MERGE INTO t USING s ON s.id = t.id
+WHEN NOT MATCHED THEN INSERT VALUES (s.id, s.label)
+RETURNING t.id AS t_id, s.label AS s_label;
+`,
+      e,
+    );
+    assert.deepEqual(r.problems, []);
+    const nullability = Object.fromEntries(
+      r.queries.map((q) => [q.name, Object.fromEntries(q.columns.map((c) => [c.name, c.nullable]))]),
+    );
+    assert.deepEqual(nullability.bySource, { t_id: false, s_label: true });
+    assert.deepEqual(nullability.byTarget, { t_id: false, s_label: false });
+  } finally {
+    await e.close();
+  }
+});

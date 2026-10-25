@@ -114,3 +114,9 @@ FROM a GROUP BY GROUPING SETS ((label IS NULL), ());
 
 -- name: ungroupedLiteral :many
 SELECT 'all' AS scope, label, count(*) AS cnt FROM a GROUP BY CUBE (label);
+
+-- name: mergeNotMatchedBySource :many
+MERGE INTO other.a t USING a s ON s.id = t.id
+WHEN MATCHED THEN UPDATE SET note = s.label
+WHEN NOT MATCHED BY SOURCE THEN UPDATE SET note = t.note
+RETURNING t.id, t.note, s.label;

@@ -51,9 +51,13 @@ export async function analyzeStatement(sql: string, engine: Engine, columnCount:
     expressionNotNull: null,
   };
 
-  // Outer joins.
+  // Outer joins, and MERGE ... WHEN NOT MATCHED BY SOURCE, which returns target rows that have no
+  // source row.
   const nullableSides: Node[] = [];
   walk(stmt, (n) => {
+    const m = n.MergeStmt;
+    if (m?.mergeWhenClauses?.some((c: Node) => c.MergeWhenClause?.matchKind === "MERGE_WHEN_NOT_MATCHED_BY_SOURCE"))
+      nullableSides.push(m.sourceRelation);
     const j = n.JoinExpr;
     if (!j) return;
     if (j.jointype === "JOIN_LEFT") nullableSides.push(j.rarg);
