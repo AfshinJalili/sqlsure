@@ -172,3 +172,6 @@ SELECT total, even_id FROM weird;
 
 -- name: insertThroughTrigger :one
 INSERT INTO loud_b (id, label) VALUES (:id, :label) RETURNING id, label;
+
+-- name: sameNames :many
+SELECT a.id, b.id, a.label, b.label FROM a LEFT JOIN b ON b.a_id = a.id;

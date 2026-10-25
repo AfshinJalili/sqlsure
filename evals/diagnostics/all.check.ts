@@ -1,6 +1,5 @@
 import * as after_param from "./after_param.sql";
 import * as bad_header from "./bad_header.sql";
-import * as duplicate_column from "./duplicate_column.sql";
 import * as duplicate_name from "./duplicate_name.sql";
 import * as one_without_rows from "./one_without_rows.sql";
 import * as positional from "./positional.sql";
@@ -19,4 +18,4 @@ declare const db: Queryable;
 void after_param.q(db, { someLongParameterName: "x" });
 void type_mismatch.q(db);
 
-void [after_param, bad_header, duplicate_column, duplicate_name, one_without_rows, positional, stray_text, syntax_error, two_statements, type_mismatch, unicode_before, unknown_column, unknown_table];
+void [after_param, bad_header, duplicate_name, one_without_rows, positional, stray_text, syntax_error, two_statements, type_mismatch, unicode_before, unknown_column, unknown_table];

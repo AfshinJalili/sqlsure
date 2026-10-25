@@ -240,5 +240,11 @@
   "insertThroughTrigger": {
     "id": "nullable",
     "label": "nullable"
+  },
+  "sameNames": {
+    "id": "nonnull",
+    "id_2": "nullable",
+    "label": "nonnull",
+    "label_2": "nullable"
   }
 }

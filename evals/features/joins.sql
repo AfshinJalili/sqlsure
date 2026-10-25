@@ -10,3 +10,6 @@ SELECT a.name, b.title FROM authors a FULL JOIN books b ON b.author_id = a.id;
 -- name: lastBook :many
 SELECT a.name, lb.title FROM authors a
 LEFT JOIN LATERAL (SELECT title FROM books WHERE author_id = a.id ORDER BY id DESC LIMIT 1) lb ON true;
+
+-- name: sameAuthorEmail :many
+SELECT a.name, other.name AS other_name FROM authors a LEFT JOIN authors other ON other.email = a.email AND other.id <> a.id;

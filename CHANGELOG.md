@@ -6,12 +6,14 @@ All notable changes to sqlsure are listed here. The format follows [Keep a Chang
 
 ### Added
 
+- Two output columns with the same name are both returned, the second as `id_2` (then `id_3`, skipping names already in use), as in sqlc. They used to be refused. Rows now arrive from `pg` as arrays and get their keys from one rule shared by the types and the run time.
 - Node 26 is tested in CI, alongside the oldest and latest supported Node 22 and 24.
 - `.sql` imports outside Node's `--import` hook: `sqlsure/vite` for Vitest, Vite and Rollup, `sqlsure/esbuild` for esbuild and tsup, and `sqlsure/bun` for Bun. The example project runs a Vitest test and a Bun script, and the smoke test checks both.
 - pgvector, PostGIS, `pg_uuidv7`, `pg_hashids`, `pg_ivm`, `age`, `pgtap` and `pg_textsearch`: sqlsure loads them from PGlite's extension packages when the schema creates them. They are optional peer dependencies; a missing one is reported with the package and version to install.
 
 ### Changed
 
+- **Breaking:** query functions call `db.query({ text, values, rowMode })` instead of `db.query(text, values)`. `pg`'s `Client`, `Pool` and `PoolClient` (and drivers that mirror them) accept both; a hand-written object with only `query(text, values)` needs the config form.
 - More columns are proven non-null, so some `| null` disappear from generated types. Column references are traced to the FROM item they name, so one side of a self-join is no longer made nullable by the other. Casts, arithmetic, comparisons, `||`, `AND`/`OR`/`NOT`, `GREATEST`/`LEAST`, `IS DISTINCT FROM` and common built-in functions of non-null columns are non-null. Columns merged by `USING` and `NATURAL` follow their side of the join. A function, operator or cast the schema defines under a built-in's name is not trusted.
 - View columns are proven from the view's definition, and generated columns from their expression, instead of always being nullable.
 

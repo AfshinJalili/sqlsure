@@ -34,7 +34,7 @@ interface Scorecard {
   thresholds: typeof THRESHOLDS;
   soundness: { violations: Violation[]; valuesChecked: number; rowsChecked: number; queriesExecuted: number; schemas: number };
   precision: { labeledNonnull: number; inferredNonnull: number; percent: number; misses: string[] };
-  breadth: { percent: number | null; typed: number; acceptedByPostgres: number; refusedByDesign: number; corpus: Omit<CorpusResult, "dynamic"> | null };
+  breadth: { percent: number | null; typed: number; acceptedByPostgres: number; corpus: Omit<CorpusResult, "dynamic"> | null };
   features: FeatureResult;
   diagnostics: DiagnosticCase[];
   mutations: MutationResult[] | null;
@@ -91,7 +91,6 @@ async function main() {
   const labeledNonnull = suites.reduce((n, s) => n + s.labeled.nonnull, 0);
   const inferredNonnull = suites.reduce((n, s) => n + s.labeled.nonnullInferredNonnull, 0);
   const precision = pct(inferredNonnull, labeledNonnull);
-  const refusedByDesign = corpus?.failures.filter((f) => /two columns named/.test(f.reason)).length ?? 0;
   const breadth = corpus ? pct(corpus.typed, corpus.acceptedByPostgres) : null;
   const featurePct = pct(features.features.filter((f) => f.passed).length, features.features.length);
   const diagPct = pct(diagnostics.filter((d) => d.passed).length, diagnostics.length);
@@ -131,7 +130,7 @@ async function main() {
       schemas: suites.length + dynamicSuites.length,
     },
     precision: { labeledNonnull, inferredNonnull, percent: precision, misses: suites.flatMap((s) => s.precisionMisses) },
-    breadth: { percent: breadth, typed: corpus?.typed ?? 0, acceptedByPostgres: corpus?.acceptedByPostgres ?? 0, refusedByDesign, corpus: corpus ? corpusSummary : null },
+    breadth: { percent: breadth, typed: corpus?.typed ?? 0, acceptedByPostgres: corpus?.acceptedByPostgres ?? 0, corpus: corpus ? corpusSummary : null },
     features,
     diagnostics,
     mutations,
@@ -217,7 +216,7 @@ function renderScorecard(card: Scorecard): string {
           `- Not translatable: ${c.unsupportedSyntax.map((u) => `${u.reason} (${u.count})`).join(", ") || "none"}`,
           `- Real Postgres rejects ${c.rejectedByPostgres} (excluded)`,
           `- Real Postgres accepts ${c.acceptedByPostgres}; sqlsure types **${c.typed}** (${card.breadth.percent!.toFixed(1)}%)`,
-          `- Of the ${c.failures.length} not typed, ${card.breadth.refusedByDesign} are refused by design: two output columns with the same name, which \`pg\` silently collapses into one`,
+          `- Not typed: ${c.failures.length || "none"}`,
           "",
           ...c.failures.map((f) => `  - \`${f.case}\` ${f.query}: ${f.reason}`),
         ].join("\n")

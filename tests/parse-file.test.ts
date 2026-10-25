@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseFile } from "../src/parse-file.ts";
 import { compileSqlModule } from "../src/emit.ts";
-import { defineQuery } from "../src/runtime.ts";
+import { defineQuery, rowKeys } from "../src/runtime.ts";
 
 test("named queries, modes and docs", () => {
   const f = parseFile(`-- leading comment is fine
@@ -88,11 +88,11 @@ test("runtime module", () => {
 });
 
 test("query functions", async () => {
-  const calls: [string, unknown[] | undefined][] = [];
+  const calls: { text: string; values: unknown[]; rowMode?: "array" }[] = [];
   const db = {
-    async query(text: string, values?: unknown[]) {
-      calls.push([text, values]);
-      return { rows: [{ id: 1 }, { id: 2 }], rowCount: 2 };
+    async query(config: { text: string; values: unknown[]; rowMode?: "array" }) {
+      calls.push(config);
+      return { rows: [[1], [2]], fields: [{ name: "id" }], rowCount: 2 };
     },
   };
   const one = defineQuery({ name: "one", mode: "one", sql: "S $1 $2", params: ["a", "b"] });
@@ -100,11 +100,24 @@ test("query functions", async () => {
   const rows = defineQuery({ name: "rows", mode: "execrows", sql: "D", params: [] });
   const exec = defineQuery({ name: "exec", mode: "exec", sql: "U", params: [] });
   assert.deepEqual(await one(db, { b: 2, a: 1 }), { id: 1 });
-  assert.deepEqual(calls[0], ["S $1 $2", [1, 2]]);
-  assert.equal((await many(db)).length, 2);
+  assert.deepEqual(calls[0], { text: "S $1 $2", values: [1, 2], rowMode: "array" });
+  assert.deepEqual(await many(db), [{ id: 1 }, { id: 2 }]);
   assert.equal(await rows(db), 2);
+  assert.deepEqual(calls[2], { text: "D", values: [] });
   assert.equal(await exec(db), undefined);
   await assert.rejects(() => one(db, { a: 1 }), /missing parameter "b"/);
   assert.equal(one.sql, "S $1 $2");
   assert.deepEqual(one.paramNames, ["a", "b"]);
+});
+
+test("two columns with the same name both reach the row, the second as name_2", async () => {
+  const db = {
+    async query() {
+      return { rows: [[1, 2, 3, "x"]], fields: [{ name: "id" }, { name: "id" }, { name: "id_2" }, { name: "label" }], rowCount: 1 };
+    },
+  };
+  const q = defineQuery({ name: "q", mode: "one", sql: "S", params: [] });
+  assert.deepEqual(await q(db), { id: 1, id_3: 2, id_2: 3, label: "x" });
+  assert.deepEqual(rowKeys(["id", "id", "id"]), ["id", "id_2", "id_3"]);
+  assert.equal(await defineQuery({ name: "none", mode: "one", sql: "S", params: [] })({ query: async () => ({ rows: [], fields: [] }) }), null);
 });

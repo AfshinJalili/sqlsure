@@ -7,6 +7,7 @@ import type pg from "pg";
 import { Engine, extensionsIn } from "../../src/engine.ts";
 import { analyzeFile, type QueryInfo } from "../../src/analyze.ts";
 import { conforms, render } from "../../src/pgtypes.ts";
+import { defineQuery } from "../../src/runtime.ts";
 import { freshDatabase, dropDatabase, preparedTypes } from "./pg.ts";
 import { rng, seed } from "./seed.ts";
 
@@ -147,6 +148,8 @@ export async function runSuite(input: SuiteInput): Promise<SuiteResult> {
       const pools = await valuePools(db);
       const r = rng(("seed" in state ? state.seed : 0)! + 1000);
       for (const info of infos) {
+        // Run it the way users do: through the query function sqlsure generates for it.
+        const run = defineQuery({ name: info.name, mode: "many", sql: capRows(info.sql), params: info.params.map((p) => p.name) });
         const runs = info.params.length ? (input.runsPerQuery ?? 12) : 1;
         for (let i = 0; i < runs; i++) {
           const values = info.params.map((p) => pickParam(p.oid, p.nullable, pools, r));
@@ -157,8 +160,7 @@ export async function runSuite(input: SuiteInput): Promise<SuiteResult> {
             // A runaway query (an endless recursive CTE, a giant generate_series) must not hang or
             // exhaust the harness: cap its time, and cap rows for plain reads.
             await db.query("set local statement_timeout = '3s'");
-            const res = await db.query(capRows(info.sql), values);
-            rows = res.rows;
+            rows = await run(db, Object.fromEntries(info.params.map((p, i) => [p.name, values[i]])));
           } catch {
             result.erroredRuns++;
             await db.query("rollback").catch(() => {});

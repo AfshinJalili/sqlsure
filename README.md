@@ -105,9 +105,11 @@ Each query starts with a `-- name: <name> :<mode>` line (sqlc's `/* name: getUse
 | `:exec` | `void` |
 | `:execrows` | `number` of affected rows |
 
+**Columns** become the row's keys. Two columns with the same name (`SELECT a.id, b.id`) are both kept: the second is `id_2`, as in sqlc.
+
 **Parameters** are named: `:name`. A name used twice is one parameter, and `:name?` also accepts `null`. Casts (`::text`), strings, quoted identifiers, dollar-quoted bodies and comments are left alone. In an array subscript, a colon after a value is a slice (`arr[1:n]`); `ARRAY[:a, :b]` and `arr[:i]` are parameters.
 
-**Calling a query.** Every query function takes anything with node-postgres' `query(text, values)` method (a `pg` `Client`, `Pool` or `PoolClient`) and its parameters as an object. Each function also carries `.sql` (the SQL it sends, with `$1` placeholders), `.paramNames` and `.mode`. The file also exports a `GetUserParams` and `GetUserRow` type for each query.
+**Calling a query.** Every query function takes anything with node-postgres' `query(config)` method (a `pg` `Client`, `Pool` or `PoolClient`, or a driver that mirrors it, such as `@neondatabase/serverless`) and its parameters as an object. Each function also carries `.sql` (the SQL it sends, with `$1` placeholders), `.paramNames` and `.mode`. The file also exports a `GetUserParams` and `GetUserRow` type for each query.
 
 ```ts
 import { listOrders, deleteUser, type ListOrdersRow } from "./orders.sql";
@@ -196,7 +198,6 @@ CI runs all of it on every push. The full report, including every precision miss
 
 - **Postgres only**, with the default `pg` type parsers. Custom type parsers (`bigint` as `BigInt`, say) are not modeled yet.
 - **Conservative spots**: `UNION` output, materialized view columns, merged join columns read through a subquery, and functions outside the built-in list are typed nullable even when they cannot be NULL. The scorecard lists every miss on its test queries.
-- **Two output columns with the same name are refused** (`SELECT a.id, b.id …`): node-postgres keeps only one of them, so no honest type exists. Rename one with `AS`.
 - **No dynamic SQL**: optional filters and `IN` lists of varying length need a fixed shape (`= ANY(:ids)` works).
 - **JSON arrays as parameters** must be passed pre-stringified, because `pg` turns JS arrays into Postgres arrays.
 - **Extensions** that PGlite does not provide (contrib or packaged, see [Setup](#setup)) cannot be loaded, so a schema that creates one fails to load. Extension types such as `vector` and `geometry` are typed `string`, the text `pg` returns for them.

@@ -3,6 +3,7 @@ import { CODES, type ParsedQuery, type Problem, parseFile } from "./parse-file.t
 import { Engine, PostgresError } from "./engine.ts";
 import { outputNotNull } from "./nullability.ts";
 import { outputType, paramType, type TypeRepr } from "./pgtypes.ts";
+import { rowKeys } from "./runtime.ts";
 
 export interface Column {
   name: string;
@@ -91,21 +92,6 @@ async function analyzeQuery(q: ParsedQuery, engine: Engine): Promise<QueryInfo |
     };
   }
 
-  const seen = new Set<string>();
-  for (const f of fields) {
-    if (seen.has(f.name) && (q.mode === "one" || q.mode === "many")) {
-      return {
-        problem: {
-          message: `"${q.name}" returns two columns named "${f.name}". Rename one with AS.`,
-          start: q.headerStart,
-          length: q.headerLength,
-          code: CODES.mode,
-        },
-      };
-    }
-    seen.add(f.name);
-  }
-
   const params: Param[] = [];
   for (let i = 0; i < q.params.length; i++) {
     const oid = description.params[i] ?? 0;
@@ -115,9 +101,10 @@ async function analyzeQuery(q: ParsedQuery, engine: Engine): Promise<QueryInfo |
   const columns: Column[] = [];
   if (q.mode === "one" || q.mode === "many") {
     const notNull = await outputNotNull(q.sql, fields, engine);
+    const keys = rowKeys(fields.map((f) => f.name));
     for (let i = 0; i < fields.length; i++) {
       const f = fields[i];
-      columns.push({ name: f.name, oid: f.dataTypeID, type: await resolveOutputType(f.dataTypeID, engine), nullable: !notNull[i] });
+      columns.push({ name: keys[i], oid: f.dataTypeID, type: await resolveOutputType(f.dataTypeID, engine), nullable: !notNull[i] });
     }
   }
   return { name: q.name, mode: q.mode, doc: q.doc, sql: q.sql, params, columns };
