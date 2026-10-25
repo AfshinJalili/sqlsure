@@ -467,13 +467,14 @@ const ALWAYS_NON_NULL = new Set([
 
 /**
  * Functions that never return NULL when no argument is NULL. Left out on purpose: substring (its
- * regex form returns NULL when nothing matches), array_length (NULL for an empty array), nullif.
+ * regex form returns NULL when nothing matches), array_length (NULL for an empty array), nullif,
+ * and extract, date_part and to_char (NULL for an infinite timestamp).
  */
 const NON_NULL_FOR_NON_NULL_ARGS = new Set([
   "lower", "upper", "initcap", "length", "char_length", "character_length", "octet_length", "btrim", "ltrim",
   "rtrim", "abs", "ceil", "ceiling", "floor", "round", "trunc", "sign", "mod", "md5", "replace", "repeat",
-  "reverse", "left", "right", "lpad", "rpad", "substr", "split_part", "strpos", "position", "to_char",
-  "date_trunc", "date_part", "extract", "cardinality", "array_to_string", "to_json", "to_jsonb", "format",
+  "reverse", "left", "right", "lpad", "rpad", "substr", "split_part", "strpos", "position", "date_trunc",
+  "cardinality", "array_to_string", "to_json", "to_jsonb", "format",
 ]);
 
 async function provenNotNull(e: Node | undefined, ctx: Context): Promise<boolean> {

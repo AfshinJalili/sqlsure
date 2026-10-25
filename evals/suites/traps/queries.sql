@@ -175,3 +175,7 @@ INSERT INTO loud_b (id, label) VALUES (:id, :label) RETURNING id, label;
 
 -- name: sameNames :many
 SELECT a.id, b.id, a.label, b.label FROM a LEFT JOIN b ON b.a_id = a.id;
+
+-- name: infiniteTimestamps :one
+SELECT extract(month FROM 'infinity'::timestamp) AS month, date_part('dow', 'infinity'::timestamptz) AS dow,
+       to_char('infinity'::timestamp, 'YYYY') AS year_text;

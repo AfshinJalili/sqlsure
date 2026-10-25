@@ -246,5 +246,10 @@
     "id_2": "nullable",
     "label": "nonnull",
     "label_2": "nullable"
+  },
+  "infiniteTimestamps": {
+    "month": "nullable",
+    "dow": "nullable",
+    "year_text": "nullable"
   }
 }
