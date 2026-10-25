@@ -109,3 +109,52 @@ INSERT INTO plain VALUES (1, 'x') RETURNING id, label;
   assert.deepEqual(n.redirected, { id: true, label: true });
   assert.deepEqual(n.plain, { id: false, label: false });
 });
+
+test("column references are traced to the FROM item they name", async () => {
+  const n = await nullability(
+    `create table a (id int primary key, label text not null, n int not null);
+     create table b (id int primary key, a_id int, label text not null);`,
+    `-- name: selfJoin :many
+SELECT child.id, child.label, parent.label AS parent_label FROM a child LEFT JOIN a parent ON parent.id = child.n;
+-- name: expressions :many
+SELECT a.id::text AS id_text, a.n * 2 + 1 AS calc, lower(a.label) AS l, b.id::text AS b_text, b.a_id + 1 AS b_calc
+FROM a LEFT JOIN b ON b.a_id = a.id;
+-- name: merged :many
+SELECT x.id, x.label FROM (SELECT id, label FROM a NATURAL FULL JOIN b) x;
+-- name: naturalFull :many
+SELECT id, label FROM a NATURAL FULL JOIN b;
+-- name: usingLeft :many
+SELECT id FROM a LEFT JOIN b USING (id);
+-- name: usingRight :many
+SELECT id FROM a RIGHT JOIN b USING (id);
+-- name: usingFullNullable :many
+SELECT a_id FROM b b1 FULL JOIN b b2 USING (a_id);
+-- name: subquery :many
+SELECT s.id FROM (SELECT b.id FROM a LEFT JOIN b ON b.a_id = a.id) s;
+`,
+  );
+  assert.deepEqual(n.selfJoin, { id: false, label: false, parent_label: true });
+  assert.deepEqual(n.expressions, { id_text: false, calc: false, l: false, b_text: true, b_calc: true });
+  assert.deepEqual(n.merged, { id: true, label: true }, "through a subquery, sqlsure does not trace merged columns");
+  assert.deepEqual(n.naturalFull, { id: false, label: false });
+  assert.deepEqual(n.usingLeft, { id: false });
+  assert.deepEqual(n.usingRight, { id: false });
+  assert.deepEqual(n.usingFullNullable, { a_id: true });
+  assert.deepEqual(n.subquery, { id: true });
+});
+
+test("a schema's own function, operator or cast is not trusted like the built-in it shadows", async () => {
+  const n = await nullability(
+    `create type mood as enum ('happy', 'sad');
+     create table a (id int primary key, label text not null, n int not null);
+     create function lower(int) returns text language sql as 'select null::text';
+     create function text_plus_int(text, int) returns text language sql as 'select null::text';
+     create operator + (leftarg = text, rightarg = int, function = text_plus_int);
+     create function int_to_mood(int) returns mood language sql as 'select null::mood';
+     create cast (int as mood) with function int_to_mood(int);`,
+    `-- name: shadowed :many
+SELECT lower(n) AS l, label + n AS plus, n::mood AS m, pg_catalog.lower(label) AS builtin, n * 2 AS times FROM a;
+`,
+  );
+  assert.deepEqual(n.shadowed, { l: true, plus: true, m: true, builtin: false, times: false });
+});

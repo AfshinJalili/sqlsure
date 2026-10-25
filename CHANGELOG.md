@@ -4,6 +4,10 @@ All notable changes to sqlsure are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+### Changed
+
+- More columns are proven non-null, so some `| null` disappear from generated types. Column references are traced to the FROM item they name, so one side of a self-join is no longer made nullable by the other. Casts, arithmetic, comparisons, `||`, `AND`/`OR`/`NOT`, `GREATEST`/`LEAST`, `IS DISTINCT FROM` and common built-in functions of non-null columns are non-null. Columns merged by `USING` and `NATURAL` follow their side of the join. A function, operator or cast the schema defines under a built-in's name is not trusted.
+
 ### Fixed
 
 - `RETURNING` from a table with a `DO INSTEAD` rule, or from a view, was typed by the table's NOT NULL constraints, but the rule's action (or an `INSTEAD OF` trigger) decides what comes back. Such columns are now nullable.

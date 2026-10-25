@@ -124,5 +124,39 @@ RETURNING t.id, t.note, s.label;
 -- name: returningExpressions :many
 UPDATE a SET n = n + 1 WHERE id = :id RETURNING id, 'updated' AS action, (label IS NULL) AS no_label, now() AS at;
 
+-- name: expressionsOfColumns :many
+SELECT a.n * 2 AS doubled, -a.n AS negated, a.label || '!' AS bang, lower(a.label) AS lowered,
+       length(a.label) AS len, (a.n > 1 AND a.id <> 0) AS both_true, NOT (a.n > 1) AS small,
+       greatest(b.id, a.id) AS g, a.n IS DISTINCT FROM b.a_id AS differs,
+       b.id * 2 AS b_doubled, upper(b.label) AS b_upper, b.a_id::text AS b_a_id, concat(b.label, '') AS c
+FROM a LEFT JOIN b ON b.a_id = a.id;
+
+-- name: schemaOverrides :many
+SELECT abs(label) AS abs_label, label + n AS plus, n::mood AS m FROM a;
+
+-- name: groupedColumnExpression :many
+SELECT n + 0 AS m, count(*) AS cnt FROM a GROUP BY ROLLUP (n);
+
+-- name: selfJoinRight :many
+SELECT parent.label AS parent_label, child.label AS child_label FROM a parent RIGHT JOIN a child ON parent.id = child.n;
+
+-- name: rightJoinUsing :many
+SELECT id, a.label AS a_label FROM a RIGHT JOIN b USING (id);
+
+-- name: fullUsingNullableColumn :many
+SELECT a_id FROM b b1 FULL JOIN b b2 USING (a_id);
+
+-- name: fullUsingSelf :many
+SELECT id FROM a a1 FULL JOIN a a2 USING (id);
+
+-- name: mergedBelowOuterJoin :many
+SELECT a.id AS a_id, x.id AS x_id FROM a LEFT JOIN (b JOIN c USING (id)) x ON x.id = a.id;
+
+-- name: innerJoinBelowOuterJoin :many
+SELECT a.id AS a_id, c.label AS c_label FROM a LEFT JOIN (b JOIN c USING (id)) ON b.id = a.id;
+
+-- name: threePartNames :many
+SELECT other.a.id, other.a.note, public.a.label FROM other.a LEFT JOIN public.a ON public.a.id = other.a.id;
+
 -- name: insertThroughRule :one
 INSERT INTO redirected (id, label) VALUES (:id, :label) RETURNING id, label;

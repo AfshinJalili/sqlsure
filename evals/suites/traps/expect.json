@@ -168,6 +168,57 @@
     "no_label": "nonnull",
     "at": "nonnull"
   },
+  "expressionsOfColumns": {
+    "doubled": "nonnull",
+    "negated": "nonnull",
+    "bang": "nonnull",
+    "lowered": "nonnull",
+    "len": "nonnull",
+    "both_true": "nonnull",
+    "small": "nonnull",
+    "g": "nonnull",
+    "differs": "nonnull",
+    "b_doubled": "nullable",
+    "b_upper": "nullable",
+    "b_a_id": "nullable",
+    "c": "nonnull"
+  },
+  "schemaOverrides": {
+    "abs_label": "nullable",
+    "plus": "nullable",
+    "m": "nullable"
+  },
+  "groupedColumnExpression": {
+    "m": "nullable",
+    "cnt": "nonnull"
+  },
+  "selfJoinRight": {
+    "parent_label": "nullable",
+    "child_label": "nonnull"
+  },
+  "rightJoinUsing": {
+    "id": "nonnull",
+    "a_label": "nullable"
+  },
+  "fullUsingNullableColumn": {
+    "a_id": "nullable"
+  },
+  "fullUsingSelf": {
+    "id": "nonnull"
+  },
+  "mergedBelowOuterJoin": {
+    "a_id": "nonnull",
+    "x_id": "nullable"
+  },
+  "threePartNames": {
+    "id": "nonnull",
+    "note": "nonnull",
+    "label": "nullable"
+  },
+  "innerJoinBelowOuterJoin": {
+    "a_id": "nonnull",
+    "c_label": "nullable"
+  },
   "insertThroughRule": {
     "id": "nullable",
     "label": "nullable"

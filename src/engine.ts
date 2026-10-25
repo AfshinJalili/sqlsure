@@ -76,6 +76,17 @@ export interface Relation {
   hasRules: boolean;
 }
 
+/**
+ * Names the schema defines outside pg_catalog. A query naming one of these may call the schema's
+ * own operator, function or cast instead of the built-in one.
+ */
+export interface Overrides {
+  operators: Set<string>;
+  functions: Set<string>;
+  /** Types that some cast function outside pg_catalog converts to. */
+  castTargets: Set<number>;
+}
+
 export interface Attribute {
   attnum: number;
   name: string;
@@ -89,6 +100,8 @@ export class Engine {
   private relationCache = new Map<number, Promise<Relation | null>>();
   private attributeCache = new Map<number, Promise<Attribute[]>>();
   private types = new Map<number, TypeInfo | null>();
+  private typeNameCache = new Map<string, Promise<number | null>>();
+  private overrideCache: Promise<Overrides> | undefined;
   private relations = new Map<string, number | null>();
   enums = new Map<number, string[]>();
 
@@ -197,6 +210,30 @@ export class Engine {
     const oid = r.rows[0]?.oid ?? null;
     this.relations.set(qualified, oid);
     return oid;
+  }
+
+  /** Resolves a type name (`int4`, `pg_catalog.varchar`, `"My".t[]`) the way a cast would, or null. */
+  typeOid(name: string): Promise<number | null> {
+    let cached = this.typeNameCache.get(name);
+    if (!cached) {
+      cached = this.lock(() => this.db.query<{ oid: number | null }>("select to_regtype($1)::oid::int as oid", [name])).then(
+        (r) => r.rows[0]?.oid ?? null,
+      );
+      this.typeNameCache.set(name, cached);
+    }
+    return cached;
+  }
+
+  overrides(): Promise<Overrides> {
+    return (this.overrideCache ??= this.lock(() =>
+      this.db.query<{ operators: string[]; functions: string[]; casts: number[] }>(
+        `select
+           array(select distinct oprname::text from pg_operator where oprnamespace <> 'pg_catalog'::regnamespace) as operators,
+           array(select distinct proname::text from pg_proc where pronamespace <> 'pg_catalog'::regnamespace) as functions,
+           array(select distinct c.casttarget::int from pg_cast c join pg_proc p on p.oid = c.castfunc
+                 where p.pronamespace <> 'pg_catalog'::regnamespace) as casts`,
+      ),
+    ).then((r) => ({ operators: new Set(r.rows[0].operators), functions: new Set(r.rows[0].functions), castTargets: new Set(r.rows[0].casts) })));
   }
 
   async typeInfo(oid: number): Promise<TypeInfo | null> {

@@ -16,6 +16,7 @@ export const MUTATIONS: { id: string; description: string; target: Set<string> }
   { id: "ignore-grouping-sets", description: "forget that ROLLUP/CUBE/GROUPING SETS null out grouped columns", target: mutations },
   { id: "trust-computed-columns", description: "treat every computed expression as non-null", target: mutations },
   { id: "ignore-not-null-constraints", description: "treat every table column as NOT NULL", target: mutations },
+  { id: "trust-shadowed-builtins", description: "trust a schema's own function, operator or cast like the built-in it shadows", target: mutations },
   { id: "int8-as-number", description: "type bigint as number (pg returns a string)", target: typeMutations },
   { id: "numeric-as-number", description: "type numeric as number (pg returns a string)", target: typeMutations },
   { id: "date-as-string", description: "type date/timestamp as string (pg returns Date)", target: typeMutations },
