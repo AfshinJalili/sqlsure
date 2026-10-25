@@ -27,12 +27,20 @@ Watch it with `gh run watch`. When it is green, `npm view sqlsure version` shows
 
 sqlsure follows semver. While it is 0.x, a change that alters the generated types of existing queries (a column becoming non-null, a new type mapping) is a minor release; fixes that only remove errors are patches.
 
-## One-time setup
+## One-time setup (before the first release)
 
-Trusted publishing must be configured once on npm (it needs two-factor authentication enabled on the npm account):
+npm requires two-factor authentication to publish, and trusted publishing can only be configured for a package that already exists. So the first version is published by hand:
 
-```sh
-npm trust github sqlsure --repo AfshinJalili/sqlsure --file release.yml --allow-publish
-```
+1. Turn on two-factor authentication on npmjs.com (Account → Two-Factor Authentication).
+2. From a clean checkout of the tagged commit, publish the first version:
+   ```sh
+   git switch --detach v0.1.0
+   npm publish --access public --otp=<code from your authenticator>
+   ```
+3. Let the release workflow publish every later version:
+   ```sh
+   npm trust github sqlsure --repo AfshinJalili/sqlsure --file release.yml --allow-publish
+   ```
+4. Re-run the release workflow for `v0.1.0` (`gh run rerun <run-id> --failed`). It sees 0.1.0 is already on npm, skips publishing, and creates the GitHub Release.
 
-npm attaches provenance to packages published from public repositories only.
+npm attaches provenance only to packages published from public repositories.
