@@ -153,6 +153,7 @@ async function statementFacts(stmt: Node, engine: Engine): Promise<Facts> {
   for (const rv of targets) {
     const oid = await engine.relationOid(relationName(rv));
     const relation = oid === null ? null : await engine.relation(oid);
+    if (mutations.has("trust-dml-targets")) continue;
     if (oid !== null && (!relation || !isTable(relation.kind) || relation.hasRules)) facts.untrustedTargets.add(oid);
   }
   return facts;
@@ -171,12 +172,42 @@ async function originNotNull(field: FieldDescription, ctx: Context): Promise<boo
   return columnNotNull(field.tableID, field.columnID, ctx.engine);
 }
 
-/** Every row of the relation has a value in this column. Only tables enforce NOT NULL; views and foreign tables do not. */
+/**
+ * Every row of the relation has a value in this column. Tables enforce NOT NULL, and a generated
+ * column has a value when its expression does. A view column has one when the view's defining
+ * query proves it. Materialized views (whose rows may predate a constraint) and foreign tables
+ * guarantee nothing.
+ */
 async function columnNotNull(oid: number, attnum: number, engine: Engine): Promise<boolean> {
   const relation = await engine.relation(oid);
-  if (!relation || !isTable(relation.kind)) return false;
+  if (!relation) return false;
+  if (relation.kind === "v") {
+    const view = await proof(engine, `view ${oid}`, async () => queryNotNull(await engine.viewDefinition(oid), engine));
+    return view[attnum - 1] ?? false;
+  }
+  if (!isTable(relation.kind)) return false;
   if (mutations.has("ignore-not-null-constraints")) return true;
-  return (await engine.attributes(oid)).some((a) => a.attnum === attnum && a.notNull);
+  const attribute = (await engine.attributes(oid)).find((a) => a.attnum === attnum);
+  if (!attribute?.generated) return attribute?.notNull ?? false;
+  if (attribute.notNull) return true;
+  const sql = `SELECT (${attribute.generated}) FROM ${relation.name}`;
+  return (await proof(engine, `generated ${oid}.${attnum}`, () => queryNotNull(sql, engine)))[0] ?? false;
+}
+
+/** Proves the output of a standalone query: a view's definition, or a generated column's expression. */
+async function queryNotNull(sql: string, engine: Engine): Promise<boolean[]> {
+  return outputNotNull(sql, (await engine.describe(sql)).fields ?? [], engine);
+}
+
+/** Proofs about the schema, kept as long as the engine that holds it. */
+const proofs = new WeakMap<Engine, Map<string, Promise<boolean[]>>>();
+
+function proof(engine: Engine, key: string, prove: () => Promise<boolean[]>): Promise<boolean[]> {
+  let byKey = proofs.get(engine);
+  if (!byKey) proofs.set(engine, (byKey = new Map()));
+  let p = byKey.get(key);
+  if (!p) byKey.set(key, (p = prove()));
+  return p;
 }
 
 function isTable(relkind: string): boolean {

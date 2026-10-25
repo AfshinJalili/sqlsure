@@ -160,3 +160,15 @@ SELECT other.a.id, other.a.note, public.a.label FROM other.a LEFT JOIN public.a 
 
 -- name: insertThroughRule :one
 INSERT INTO redirected (id, label) VALUES (:id, :label) RETURNING id, label;
+
+-- name: viewWithOuterJoin :many
+SELECT id, a_id, a_label, label FROM b_with_a;
+
+-- name: viewOnNullableSide :many
+SELECT a.id, v.label FROM a LEFT JOIN a_view v ON v.id = a.n;
+
+-- name: generatedColumns :many
+SELECT total, even_id FROM weird;
+
+-- name: insertThroughTrigger :one
+INSERT INTO loud_b (id, label) VALUES (:id, :label) RETURNING id, label;

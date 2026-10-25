@@ -14,9 +14,11 @@ create table weird (
   p pair,
   j jsonb not null,
   span int4range,
-  total int generated always as (id * 2) stored
+  total int generated always as (id * 2) stored,
+  even_id int generated always as (case when id % 2 = 0 then id end) stored
 );
 create view a_view as select id, label from a;
+create view b_with_a as select b.id, b.a_id, a.label as a_label, b.label from b left join a on a.id = b.a_id;
 create schema other;
 create table other.a (id int primary key, note text not null);
 
@@ -33,3 +35,8 @@ create table redirected (id int primary key, label text not null);
 create table redirect_log (id int, label text);
 create rule redirect as on insert to redirected do instead
   insert into redirect_log values (new.id, null) returning redirect_log.id, redirect_log.label;
+
+-- A view whose INSTEAD OF trigger returns NULLs: RETURNING is whatever the trigger returns.
+create view loud_b as select id, label from b;
+create function loud_b_insert() returns trigger language plpgsql as $$ begin new.id := null; new.label := null; return new; end $$;
+create trigger loud_b_insert instead of insert on loud_b for each row execute function loud_b_insert();

@@ -222,5 +222,23 @@
   "insertThroughRule": {
     "id": "nullable",
     "label": "nullable"
+  },
+  "viewWithOuterJoin": {
+    "id": "nonnull",
+    "a_id": "nullable",
+    "a_label": "nullable",
+    "label": "nonnull"
+  },
+  "viewOnNullableSide": {
+    "id": "nonnull",
+    "label": "nullable"
+  },
+  "generatedColumns": {
+    "total": "nonnull",
+    "even_id": "nullable"
+  },
+  "insertThroughTrigger": {
+    "id": "nullable",
+    "label": "nullable"
   }
 }

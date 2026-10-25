@@ -92,6 +92,8 @@ export interface Attribute {
   name: string;
   /** The column is declared NOT NULL. Only tables enforce it. */
   notNull: boolean;
+  /** For a generated column, the expression that computes it from the rest of the row. */
+  generated: string | null;
 }
 
 export class Engine {
@@ -191,7 +193,10 @@ export class Engine {
     if (!cached) {
       cached = this.lock(() =>
         this.db.query<Attribute>(
-          "select attnum::int as attnum, attname::text as name, attnotnull as \"notNull\" from pg_attribute where attrelid = $1 and attnum > 0 and not attisdropped order by attnum",
+          `select a.attnum::int as attnum, a.attname::text as name, a.attnotnull as "notNull",
+             case when a.attgenerated <> '' then pg_get_expr(d.adbin, d.adrelid) end as generated
+           from pg_attribute a left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+           where a.attrelid = $1 and a.attnum > 0 and not a.attisdropped order by a.attnum`,
           [oid],
         ),
       ).then((r) => r.rows);
@@ -210,6 +215,12 @@ export class Engine {
     const oid = r.rows[0]?.oid ?? null;
     this.relations.set(qualified, oid);
     return oid;
+  }
+
+  /** A view's defining query, as SQL that parses under the schema's search_path. */
+  async viewDefinition(oid: number): Promise<string> {
+    const r = await this.lock(() => this.db.query<{ sql: string }>("select pg_get_viewdef($1::oid) as sql", [oid]));
+    return r.rows[0].sql;
   }
 
   /** Resolves a type name (`int4`, `pg_catalog.varchar`, `"My".t[]`) the way a cast would, or null. */

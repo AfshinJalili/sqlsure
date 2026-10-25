@@ -135,11 +135,13 @@ Parameters accept what `pg` serializes: an `int8` parameter takes `number | stri
 
 A column is typed non-null only when sqlsure can **prove** it:
 
-- it comes straight from a table column declared `NOT NULL` (Postgres reports each output column's origin), and
-- that table is not on the nullable side of any `LEFT`/`RIGHT`/`FULL JOIN` anywhere in the statement, including inside subqueries, `LATERAL` and CTEs joined on that side, and
-- the statement uses no `GROUPING SETS`/`ROLLUP`/`CUBE`;
+- **A column reference** is traced to the table it names, by alias, the way Postgres resolves it. It is non-null when that column is `NOT NULL` and no `LEFT`/`RIGHT`/`FULL JOIN` above it can NULL-extend it. So in `categories child LEFT JOIN categories parent`, `child.name` is non-null and `parent.name` is not. `MERGE … WHEN NOT MATCHED BY SOURCE` counts as an outer join on the source.
+- **A view column** is proven from the view's definition, and **a generated column** from its expression.
+- **A column merged by `USING` or `NATURAL`** follows its side of the join; after a `FULL JOIN`, both sides must be non-null.
+- **An expression** is non-null when it cannot be NULL: `count(…)`, `EXISTS`, `IS [NOT] NULL`, `IS DISTINCT FROM`, ranking windows, non-null literals, `COALESCE`/`GREATEST`/`LEAST` with one non-null argument, and casts, `AND`/`OR`/`NOT`, arithmetic, comparison, `||` and common built-in functions (`lower`, `length`, `round`, `to_char`, `concat`, …) of non-null values. If your schema defines its own function, operator or cast with the same name, sqlsure no longer trusts that name.
+- **Columns read through a subquery or CTE** use the origin Postgres reports. They are non-null only when that table is on the nullable side of no outer join anywhere in the statement.
 
-or it is an expression that cannot be NULL: `count(…)`, `EXISTS`, `IS [NOT] NULL`, `row_number()` and other ranking windows, a non-null literal, or `COALESCE` with one of those.
+With `GROUPING SETS`, `ROLLUP` or `CUBE`, any grouped expression can be NULL in subtotal rows, matched the way Postgres matches grouping keys. `UNION`/`INTERSECT`/`EXCEPT` output is nullable. `RETURNING` from a view or from a table with a `DO INSTEAD` rule is nullable, because a trigger or rule decides what comes back.
 
 Everything else is `| null`. That is deliberately conservative: a missing `| null` is a crash in production, an extra one is a `?.` you did not need. The scorecard measures both directions.
 
@@ -183,7 +185,7 @@ CI runs all of it on every push. The full report, including every precision miss
 ## Limitations
 
 - **Postgres only**, with the default `pg` type parsers. Custom type parsers (`bigint` as `BigInt`, say) are not modeled yet.
-- **Conservative spots**: columns of views, of a table joined to itself, of casts (`id::text`), of generated columns and of `UNION` output are typed nullable even when they cannot be NULL. The scorecard lists every such miss.
+- **Conservative spots**: `UNION` output, materialized view columns, merged join columns read through a subquery, and functions outside the built-in list are typed nullable even when they cannot be NULL. The scorecard lists every miss on its test queries.
 - **Two output columns with the same name are refused** (`SELECT a.id, b.id …`): node-postgres keeps only one of them, so no honest type exists. Rename one with `AS`.
 - **No dynamic SQL**: optional filters and `IN` lists of varying length need a fixed shape (`= ANY(:ids)` works).
 - **JSON arrays as parameters** must be passed pre-stringified, because `pg` turns JS arrays into Postgres arrays.

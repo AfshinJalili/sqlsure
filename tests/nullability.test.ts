@@ -158,3 +158,35 @@ SELECT lower(n) AS l, label + n AS plus, n::mood AS m, pg_catalog.lower(label) A
   );
   assert.deepEqual(n.shadowed, { l: true, plus: true, m: true, builtin: false, times: false });
 });
+
+test("view and generated columns are proven from their definitions", async () => {
+  const n = await nullability(
+    `create table a (id int primary key, label text not null);
+     create table b (id int primary key, a_id int, label text not null);
+     create view av as select id, label from a;
+     create view bv as select b.id, a.label, count(*) over () as cnt from b left join a on a.id = b.a_id;
+     create view nested as select id, label || '!' as bang from av;
+     create view unioned as select id from a union all select null;
+     create materialized view mv as select id from a;
+     create table g (id int primary key, x int, twice int generated always as (id * 2) stored, maybe int generated always as (x + 1) stored);
+     create view loud as select id, label from b;
+     create function loud_ins() returns trigger language plpgsql as $$ begin new.id := null; return new; end $$;
+     create trigger loud_ins instead of insert on loud for each row execute function loud_ins();`,
+    `-- name: views :many
+SELECT av.id, av.label, bv.label AS b_label, bv.cnt, nested.bang FROM av JOIN bv ON bv.id = av.id JOIN nested ON nested.id = av.id;
+-- name: nullableSide :many
+SELECT a.id, av.label FROM a LEFT JOIN av ON av.id = a.id;
+-- name: others :many
+SELECT unioned.id AS u, mv.id AS m FROM unioned, mv;
+-- name: generated :many
+SELECT twice, maybe FROM g;
+-- name: throughTrigger :one
+INSERT INTO loud (id, label) VALUES (1, 'x') RETURNING id, label;
+`,
+  );
+  assert.deepEqual(n.views, { id: false, label: false, b_label: true, cnt: false, bang: false });
+  assert.deepEqual(n.nullableSide, { id: false, label: true });
+  assert.deepEqual(n.others, { u: true, m: true });
+  assert.deepEqual(n.generated, { twice: false, maybe: true });
+  assert.deepEqual(n.throughTrigger, { id: true, label: true });
+});
