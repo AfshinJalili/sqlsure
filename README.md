@@ -64,6 +64,14 @@ At run time, load sqlsure's hook so the import works in Node. The hook needs no 
 node --import sqlsure/register app.ts
 ```
 
+Other tools load `.sql` files the same way:
+
+| Tool | Setup |
+| --- | --- |
+| Vitest, Vite, Rollup | `import sqlsure from "sqlsure/vite"` and `plugins: [sqlsure()]` in `vitest.config.ts` or `vite.config.ts` |
+| esbuild, tsup | `import sqlsure from "sqlsure/esbuild"` and `plugins: [sqlsure()]` |
+| Bun | `bun --preload sqlsure/bun app.ts`, or `preload = ["sqlsure/bun"]` in `bunfig.toml` |
+
 In VS Code, install the TypeScript 7 extension (`TypeScriptTeam.native-preview`) and set `"js/ts.experimental.useTsgo": true`.
 
 A complete project is in [`examples/basic`](./examples/basic).

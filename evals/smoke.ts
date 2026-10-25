@@ -1,8 +1,9 @@
 // `npm run smoke`: installs the packed tarball into a copy of examples/basic, the way a user would,
-// and checks the three promises the README makes: tsc types .sql imports, a schema change fails tsc
-// at the exact line in the .sql file, and the query runs at run time through `sqlsure/register`.
+// and checks the promises the README makes: tsc types .sql imports, a schema change fails tsc at
+// the exact line in the .sql file, Vitest loads .sql files through `sqlsure/vite`, and the queries
+// run through `sqlsure/register` under Node and `sqlsure/bun` under Bun.
 //
-// Runs the run-time step against SQLSURE_EVAL_PG (see evals/lib/pg.ts).
+// Needs Bun on PATH. Runs the run-time steps against SQLSURE_EVAL_PG (see evals/lib/pg.ts).
 import { execFileSync } from "node:child_process";
 import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -52,13 +53,19 @@ try {
     broken.output,
   );
 
+  const tested = run("npx", ["vitest", "run"]);
+  check("vitest loads .sql files through sqlsure/vite", tested.ok && /1 passed/.test(tested.output), tested.output);
+
   const db = await freshDatabase("smoke");
   try {
     await db.query(schema);
     const url = new URL(process.env.SQLSURE_EVAL_PG ?? "postgres://postgres@127.0.0.1:54329/postgres");
     url.pathname = `/${db.database}`;
+    const ranQueries = (output: string) => /demo\+\d+@example\.com/.test(output) && output.includes("deleted in a rolled-back transaction: 1");
     const started = run("node", ["--import", "sqlsure/register", "src/main.ts"], { DATABASE_URL: url.toString() });
-    check("node --import sqlsure/register runs the queries", started.ok && /demo\+\d+@example\.com/.test(started.output) && started.output.includes("deleted in a rolled-back transaction: 1"), started.output);
+    check("node --import sqlsure/register runs the queries", started.ok && ranQueries(started.output), started.output);
+    const bun = run("bun", ["--preload", "sqlsure/bun", "src/main.ts"], { DATABASE_URL: url.toString() });
+    check("bun --preload sqlsure/bun runs the queries", bun.ok && ranQueries(bun.output), bun.output);
   } finally {
     await dropDatabase(db);
   }

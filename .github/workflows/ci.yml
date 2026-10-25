@@ -56,8 +56,11 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.x"
       - run: npm ci
-      - name: Install the packed tarball into examples/basic, type-check and run it
+      - name: Install the packed tarball into examples/basic, type-check, test and run it
         run: npm run smoke
 
   evals:

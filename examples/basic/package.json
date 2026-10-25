@@ -4,8 +4,10 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc -p . --noEmit --runExternalCode",
-    "start": "node --import sqlsure/register src/main.ts"
+    "start": "node --import sqlsure/register src/main.ts",
+    "start:bun": "bun --preload sqlsure/bun src/main.ts",
+    "test": "vitest run"
   },
   "dependencies": { "pg": "^8.23.1", "sqlsure": "^0.1.0" },
-  "devDependencies": { "@types/node": "^22.20.5", "@types/pg": "^8.23.1", "typescript": "7.1.0-beta" }
+  "devDependencies": { "@types/node": "^22.20.5", "@types/pg": "^8.23.1", "typescript": "7.1.0-beta", "vitest": "^5.0.5" }
 }

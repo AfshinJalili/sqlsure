@@ -19,6 +19,7 @@ The code is TypeScript run directly by Node (type stripping). Use a Node version
 | `src/emit.ts` | The TypeScript `tsc` sees, and the JavaScript Node loads. |
 | `src/mapper.ts`, `src/rpc.ts` | The content mapper protocol `tsc` speaks. |
 | `src/register.ts`, `src/runtime.ts` | The run-time hook and the query functions. |
+| `src/vite.ts`, `src/esbuild.ts`, `src/bun.ts` | Loading `.sql` files in Vite/Vitest, esbuild and Bun; each calls `compileSqlModule` in `emit.ts`. |
 
 ## Evals
 
@@ -28,7 +29,7 @@ The evals need a Postgres server. Start a throwaway one and run them:
 docker run -d --name sqlsure-evals -p 127.0.0.1:54329:5432 -e POSTGRES_HOST_AUTH_METHOD=trust postgres:17
 npm run evals          # everything, about 6 minutes; non-zero exit when a threshold is missed
 npm run evals:quick    # without the sqlc corpus and the benchmarks
-npm run smoke          # pack, install into a copy of examples/basic, type-check and run it
+npm run smoke          # pack, install into a copy of examples/basic, type-check, test and run it (needs Bun)
 ```
 
 `SQLSURE_EVAL_PG` points them at another server (default `postgres://postgres@127.0.0.1:54329/postgres`). `npm run evals -- --update-readme` also rewrites the generated tables in README.md.
