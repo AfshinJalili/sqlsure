@@ -1,7 +1,7 @@
 // Turns a parsed .sql file into typed query descriptions, using the schema loaded into the engine.
 import { CODES, type ParsedQuery, type Problem, parseFile } from "./parse-file.ts";
 import { Engine, PostgresError } from "./engine.ts";
-import { analyzeStatement, fieldNotNull } from "./nullability.ts";
+import { outputNotNull } from "./nullability.ts";
 import { outputType, paramType, type TypeRepr } from "./pgtypes.ts";
 
 export interface Column {
@@ -114,15 +114,10 @@ async function analyzeQuery(q: ParsedQuery, engine: Engine): Promise<QueryInfo |
 
   const columns: Column[] = [];
   if (q.mode === "one" || q.mode === "many") {
-    const facts = await analyzeStatement(q.sql, engine, fields.length);
+    const notNull = await outputNotNull(q.sql, fields, engine);
     for (let i = 0; i < fields.length; i++) {
       const f = fields[i];
-      columns.push({
-        name: f.name,
-        oid: f.dataTypeID,
-        type: await resolveOutputType(f.dataTypeID, engine),
-        nullable: !(await fieldNotNull(f, i, facts, engine)),
-      });
+      columns.push({ name: f.name, oid: f.dataTypeID, type: await resolveOutputType(f.dataTypeID, engine), nullable: !notNull[i] });
     }
   }
   return { name: q.name, mode: q.mode, doc: q.doc, sql: q.sql, params, columns };

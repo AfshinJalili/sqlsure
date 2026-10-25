@@ -18,7 +18,15 @@ type Node = Record<string, any>;
  */
 export const mutations = new Set<string>();
 
-export interface Facts {
+/** For each output column Postgres described for `sql`, whether it can never be NULL. */
+export async function outputNotNull(sql: string, fields: FieldDescription[], engine: Engine): Promise<boolean[]> {
+  const facts = await analyzeStatement(sql, engine, fields.length);
+  const out: boolean[] = [];
+  for (let i = 0; i < fields.length; i++) out.push(await fieldNotNull(fields[i], i, facts, engine));
+  return out;
+}
+
+interface Facts {
   /** Relations (OIDs) that appear on the nullable side of an outer join anywhere in the statement. */
   nullableRelations: Set<number>;
   /** A relation on a nullable side could not be resolved, so no column origin can be trusted. */
@@ -32,7 +40,7 @@ export interface Facts {
 }
 
 /** `columnCount` is how many columns Postgres described, to check the select list lines up with them. */
-export async function analyzeStatement(sql: string, engine: Engine, columnCount: number): Promise<Facts> {
+async function analyzeStatement(sql: string, engine: Engine, columnCount: number): Promise<Facts> {
   await ready();
   const tree = parseSync(sql) as Node;
   const stmt: Node = tree.stmts?.[0]?.stmt ?? {};
@@ -239,7 +247,7 @@ function quote(ident: string): string {
 }
 
 /** Combines the catalog with the facts above. */
-export async function fieldNotNull(
+async function fieldNotNull(
   field: FieldDescription,
   position: number,
   facts: Facts,
@@ -252,5 +260,12 @@ export async function fieldNotNull(
   if (facts.setOperation || facts.groupingSets || facts.unresolvedNullable) return false;
   if (field.tableID === 0 || field.columnID <= 0) return false;
   if (facts.nullableRelations.has(field.tableID)) return false;
-  return engine.isNotNull(field.tableID, field.columnID);
+  return columnNotNull(field.tableID, field.columnID, engine);
+}
+
+/** Every row of the relation has a value in this column. Only tables enforce NOT NULL; views and foreign tables do not. */
+async function columnNotNull(oid: number, attnum: number, engine: Engine): Promise<boolean> {
+  const relation = await engine.relation(oid);
+  if (!relation || (relation.kind !== "r" && relation.kind !== "p")) return false;
+  return (await engine.attributes(oid)).some((a) => a.attnum === attnum && a.notNull);
 }

@@ -66,10 +66,26 @@ export interface TypeInfo {
   typbasetype: number;
 }
 
+export interface Relation {
+  oid: number;
+  /** pg_class.relkind: 'r' table, 'p' partitioned table, 'v' view, 'm' materialized view, 'f' foreign table... */
+  kind: string;
+  /** The name to reach it by from the schema's search_path, quoted where needed. */
+  name: string;
+}
+
+export interface Attribute {
+  attnum: number;
+  name: string;
+  /** The column is declared NOT NULL. Only tables enforce it. */
+  notNull: boolean;
+}
+
 export class Engine {
   private db: PGlite;
   private queue: Promise<unknown> = Promise.resolve();
-  private notNull = new Map<string, boolean>();
+  private relationCache = new Map<number, Promise<Relation | null>>();
+  private attributeCache = new Map<number, Promise<Attribute[]>>();
   private types = new Map<number, TypeInfo | null>();
   private relations = new Map<string, number | null>();
   enums = new Map<number, string[]>();
@@ -140,20 +156,30 @@ export class Engine {
     });
   }
 
-  async isNotNull(tableID: number, columnID: number): Promise<boolean> {
-    const key = `${tableID}:${columnID}`;
-    const cached = this.notNull.get(key);
-    if (cached !== undefined) return cached;
-    const r = await this.lock(() =>
-      this.db.query<{ notnull: boolean }>(
-        // Only plain and partitioned tables guarantee NOT NULL; views and foreign tables do not.
-        "select a.attnotnull and c.relkind in ('r','p') as notnull from pg_attribute a join pg_class c on c.oid = a.attrelid where a.attrelid = $1 and a.attnum = $2",
-        [tableID, columnID],
-      ),
-    );
-    const value = r.rows[0]?.notnull === true;
-    this.notNull.set(key, value);
-    return value;
+  relation(oid: number): Promise<Relation | null> {
+    let cached = this.relationCache.get(oid);
+    if (!cached) {
+      cached = this.lock(() =>
+        this.db.query<Relation>("select oid::int as oid, relkind::text as kind, oid::regclass::text as name from pg_class where oid = $1", [oid]),
+      ).then((r) => r.rows[0] ?? null);
+      this.relationCache.set(oid, cached);
+    }
+    return cached;
+  }
+
+  /** The relation's user columns, in order. */
+  attributes(oid: number): Promise<Attribute[]> {
+    let cached = this.attributeCache.get(oid);
+    if (!cached) {
+      cached = this.lock(() =>
+        this.db.query<Attribute>(
+          "select attnum::int as attnum, attname::text as name, attnotnull as \"notNull\" from pg_attribute where attrelid = $1 and attnum > 0 and not attisdropped order by attnum",
+          [oid],
+        ),
+      ).then((r) => r.rows);
+      this.attributeCache.set(oid, cached);
+    }
+    return cached;
   }
 
   /** Resolves a relation name the way the query would, or null. */

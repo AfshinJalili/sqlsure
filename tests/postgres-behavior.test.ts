@@ -36,8 +36,8 @@ test("Postgres facts sqlsure relies on", async (t) => {
   });
   await t.test("a view column's origin is the view, which is never NOT NULL", async () => {
     const [[table, column]] = await origin("select label from v");
-    assert.notEqual(table, 0);
-    assert.equal(await e.isNotNull(table, column), false);
+    assert.equal((await e.relation(table))?.kind, "v");
+    assert.equal((await e.attributes(table)).find((a) => a.attnum === column)?.notNull, false);
   });
   await t.test("a domain is described as its base type", async () => {
     const d = await e.describe("select x from d");
