@@ -37,6 +37,11 @@ interface Facts {
   setOperation: boolean;
   /** Per output position: proven non-null by its expression, or undefined when it cannot be told. */
   expressionNotNull: (boolean | undefined)[] | null;
+  /**
+   * DML targets whose RETURNING is not bound by the table's constraints: views (an INSTEAD OF
+   * trigger returns what it likes) and relations with rewrite rules.
+   */
+  untrustedTargets: Set<number>;
 }
 
 /** `columnCount` is how many columns Postgres described, to check the select list lines up with them. */
@@ -57,6 +62,7 @@ async function analyzeStatement(sql: string, engine: Engine, columnCount: number
     groupingSets: false,
     setOperation: false,
     expressionNotNull: null,
+    untrustedTargets: new Set(),
   };
 
   // Outer joins, and MERGE ... WHEN NOT MATCHED BY SOURCE, which returns target rows that have no
@@ -86,7 +92,7 @@ async function analyzeStatement(sql: string, engine: Engine, columnCount: number
         }
         return;
       }
-      names.add(rv.schemaname ? `${quote(rv.schemaname)}.${quote(rv.relname)}` : quote(rv.relname));
+      names.add(relationName(rv));
     });
   if (!mutations.has("ignore-outer-joins")) for (const side of nullableSides) collect(side);
   for (const name of names) {
@@ -110,6 +116,17 @@ async function analyzeStatement(sql: string, engine: Engine, columnCount: number
     },
     false,
   );
+
+  const targets: Node[] = [];
+  walk(stmt, (n) => {
+    const dml = n.InsertStmt ?? n.UpdateStmt ?? n.DeleteStmt ?? n.MergeStmt;
+    if (dml?.relation?.relname) targets.push(dml.relation);
+  });
+  for (const rv of targets) {
+    const oid = await engine.relationOid(relationName(rv));
+    const relation = oid === null ? null : await engine.relation(oid);
+    if (oid !== null && (!relation || !isTable(relation.kind) || relation.hasRules)) facts.untrustedTargets.add(oid);
+  }
 
   facts.expressionNotNull = expressionFacts(stmt, columnCount);
   return facts;
@@ -242,6 +259,10 @@ function walk(node: unknown, fn: (n: Node, inExpression: boolean) => void, inExp
   }
 }
 
+function relationName(rv: Node): string {
+  return rv.schemaname ? `${quote(rv.schemaname)}.${quote(rv.relname)}` : quote(rv.relname);
+}
+
 function quote(ident: string): string {
   return /^[a-z_][a-z0-9_$]*$/.test(ident) ? ident : `"${ident.replace(/"/g, '""')}"`;
 }
@@ -259,13 +280,17 @@ async function fieldNotNull(
   if (mutations.has("ignore-not-null-constraints") && field.tableID !== 0 && !facts.nullableRelations.has(field.tableID)) return true;
   if (facts.setOperation || facts.groupingSets || facts.unresolvedNullable) return false;
   if (field.tableID === 0 || field.columnID <= 0) return false;
-  if (facts.nullableRelations.has(field.tableID)) return false;
+  if (facts.nullableRelations.has(field.tableID) || facts.untrustedTargets.has(field.tableID)) return false;
   return columnNotNull(field.tableID, field.columnID, engine);
 }
 
 /** Every row of the relation has a value in this column. Only tables enforce NOT NULL; views and foreign tables do not. */
 async function columnNotNull(oid: number, attnum: number, engine: Engine): Promise<boolean> {
   const relation = await engine.relation(oid);
-  if (!relation || (relation.kind !== "r" && relation.kind !== "p")) return false;
+  if (!relation || !isTable(relation.kind)) return false;
   return (await engine.attributes(oid)).some((a) => a.attnum === attnum && a.notNull);
+}
+
+function isTable(relkind: string): boolean {
+  return relkind === "r" || relkind === "p";
 }

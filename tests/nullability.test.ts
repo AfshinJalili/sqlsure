@@ -93,3 +93,19 @@ DELETE FROM a RETURNING 'gone' AS what;
   assert.deepEqual(n.ins, { id: false, one: false, t: false, maybe: true });
   assert.deepEqual(n.del, { what: false });
 });
+
+test("RETURNING from a table with a DO INSTEAD rule is not bound by the table's NOT NULL", async () => {
+  const n = await nullability(
+    `create table t (id int primary key, label text not null);
+     create table log (id int, label text);
+     create table plain (id int primary key, label text not null);
+     create rule redirect as on insert to t do instead insert into log values (new.id, null) returning log.id, log.label;`,
+    `-- name: redirected :one
+INSERT INTO t VALUES (1, 'x') RETURNING id, label;
+-- name: plain :one
+INSERT INTO plain VALUES (1, 'x') RETURNING id, label;
+`,
+  );
+  assert.deepEqual(n.redirected, { id: true, label: true });
+  assert.deepEqual(n.plain, { id: false, label: false });
+});

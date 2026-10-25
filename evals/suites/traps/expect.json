@@ -167,5 +167,9 @@
     "action": "nonnull",
     "no_label": "nonnull",
     "at": "nonnull"
+  },
+  "insertThroughRule": {
+    "id": "nullable",
+    "label": "nullable"
   }
 }

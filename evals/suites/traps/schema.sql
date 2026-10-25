@@ -19,3 +19,9 @@ create table weird (
 create view a_view as select id, label from a;
 create schema other;
 create table other.a (id int primary key, note text not null);
+
+-- A DO INSTEAD rule: RETURNING comes from the rule's action, not from the table's constraints.
+create table redirected (id int primary key, label text not null);
+create table redirect_log (id int, label text);
+create rule redirect as on insert to redirected do instead
+  insert into redirect_log values (new.id, null) returning redirect_log.id, redirect_log.label;

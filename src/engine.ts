@@ -72,6 +72,8 @@ export interface Relation {
   kind: string;
   /** The name to reach it by from the schema's search_path, quoted where needed. */
   name: string;
+  /** Rewrite rules, including a view's own; a DO INSTEAD rule can make RETURNING return anything. */
+  hasRules: boolean;
 }
 
 export interface Attribute {
@@ -160,7 +162,10 @@ export class Engine {
     let cached = this.relationCache.get(oid);
     if (!cached) {
       cached = this.lock(() =>
-        this.db.query<Relation>("select oid::int as oid, relkind::text as kind, oid::regclass::text as name from pg_class where oid = $1", [oid]),
+        this.db.query<Relation>(
+          'select oid::int as oid, relkind::text as kind, oid::regclass::text as name, relhasrules as "hasRules" from pg_class where oid = $1',
+          [oid],
+        ),
       ).then((r) => r.rows[0] ?? null);
       this.relationCache.set(oid, cached);
     }

@@ -123,3 +123,6 @@ RETURNING t.id, t.note, s.label;
 
 -- name: returningExpressions :many
 UPDATE a SET n = n + 1 WHERE id = :id RETURNING id, 'updated' AS action, (label IS NULL) AS no_label, now() AS at;
+
+-- name: insertThroughRule :one
+INSERT INTO redirected (id, label) VALUES (:id, :label) RETURNING id, label;
