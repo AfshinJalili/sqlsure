@@ -100,3 +100,6 @@ SELECT id::text AS id_text, label::varchar(3) AS short FROM a;
 
 -- name: inListUnion :many
 SELECT id, label FROM a WHERE id IN (SELECT id FROM b UNION SELECT id FROM c);
+
+-- name: compositeStar :many
+SELECT (p).*, 1 AS one FROM weird;

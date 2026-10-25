@@ -114,7 +114,7 @@ async function analyzeQuery(q: ParsedQuery, engine: Engine): Promise<QueryInfo |
 
   const columns: Column[] = [];
   if (q.mode === "one" || q.mode === "many") {
-    const facts = await analyzeStatement(q.sql, engine);
+    const facts = await analyzeStatement(q.sql, engine, fields.length);
     for (let i = 0; i < fields.length; i++) {
       const f = fields[i];
       columns.push({

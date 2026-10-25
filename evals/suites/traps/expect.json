@@ -135,5 +135,10 @@
   "inListUnion": {
     "id": "nonnull",
     "label": "nonnull"
+  },
+  "compositeStar": {
+    "a": "nullable",
+    "b": "nullable",
+    "one": "nonnull"
   }
 }

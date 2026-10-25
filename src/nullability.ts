@@ -31,7 +31,8 @@ export interface Facts {
   expressionNotNull: (boolean | undefined)[] | null;
 }
 
-export async function analyzeStatement(sql: string, engine: Engine): Promise<Facts> {
+/** `columnCount` is how many columns Postgres described, to check the select list lines up with them. */
+export async function analyzeStatement(sql: string, engine: Engine, columnCount: number): Promise<Facts> {
   await ready();
   const tree = parseSync(sql) as Node;
   const stmt: Node = tree.stmts?.[0]?.stmt ?? {};
@@ -98,11 +99,11 @@ export async function analyzeStatement(sql: string, engine: Engine): Promise<Fac
     false,
   );
 
-  facts.expressionNotNull = expressionFacts(stmt);
+  facts.expressionNotNull = expressionFacts(stmt, columnCount);
   return facts;
 }
 
-function expressionFacts(stmt: Node): (boolean | undefined)[] | null {
+function expressionFacts(stmt: Node, columnCount: number): (boolean | undefined)[] | null {
   let targets: Node[] | undefined;
   if (stmt.SelectStmt) {
     const s = stmt.SelectStmt;
@@ -113,13 +114,22 @@ function expressionFacts(stmt: Node): (boolean | undefined)[] | null {
     targets = dml?.returningList;
   }
   if (!targets) return null;
-  // `*` expands to an unknown number of columns, so positions no longer line up.
-  let star = false;
-  walkShallowTargets(targets, (n) => {
-    if (n.ColumnRef?.fields?.some((f: Node) => f.A_Star)) star = true;
-  });
-  if (star) return null;
-  return targets.map((t) => (provenNotNull(t.ResTarget?.val) ? true : undefined));
+  // `*`, `t.*` and `(composite).*` expand to any number of columns. Targets before the first one
+  // line up with output columns from the start, targets after the last one from the end.
+  const stars = targets.flatMap((t, i) => (isStar(t.ResTarget?.val) ? [i] : []));
+  const proven = (t: Node) => (provenNotNull(t.ResTarget?.val) ? true : undefined);
+  if (!stars.length) return targets.length === columnCount ? targets.map(proven) : null;
+  const first = stars[0];
+  const afterLast = targets.length - stars[stars.length - 1] - 1;
+  if (first + afterLast > columnCount) return null;
+  const out: (boolean | undefined)[] = new Array(columnCount).fill(undefined);
+  for (let i = 0; i < first; i++) out[i] = proven(targets[i]);
+  for (let k = 1; k <= afterLast; k++) out[columnCount - k] = proven(targets[targets.length - k]);
+  return out;
+}
+
+function isStar(e: Node | undefined): boolean {
+  return !!(e?.ColumnRef?.fields?.some((f: Node) => f.A_Star) || e?.A_Indirection?.indirection?.some((f: Node) => f.A_Star));
 }
 
 const NON_NULL_WINDOW = new Set(["row_number", "rank", "dense_rank", "percent_rank", "cume_dist", "ntile"]);
@@ -149,13 +159,6 @@ function funcName(f: Node): string {
   const schema = parts.length > 1 ? parts[0]?.String?.sval : undefined;
   if (schema && schema !== "pg_catalog") return "";
   return (last?.String?.sval ?? "").toLowerCase();
-}
-
-function walkShallowTargets(targets: Node[], fn: (n: Node) => void) {
-  for (const t of targets) {
-    const v = t.ResTarget?.val;
-    if (v) fn(v);
-  }
 }
 
 /** Visits every node object. `inExpression` is true below a SubLink (a subquery used as a value). */
