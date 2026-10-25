@@ -179,3 +179,6 @@ SELECT a.id, b.id, a.label, b.label FROM a LEFT JOIN b ON b.a_id = a.id;
 -- name: infiniteTimestamps :one
 SELECT extract(month FROM 'infinity'::timestamp) AS month, date_part('dow', 'infinity'::timestamptz) AS dow,
        to_char('infinity'::timestamp, 'YYYY') AS year_text;
+
+-- name: arrayConstructors :many
+SELECT ARRAY[b.label] AS labels, ARRAY[]::int[] AS empty, ARRAY[a.id, b.id] AS ids FROM a LEFT JOIN b ON b.a_id = a.id;

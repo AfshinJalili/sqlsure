@@ -486,6 +486,7 @@ async function provenNotNull(e: Node | undefined, ctx: Context): Promise<boolean
   }
   if (e.TypeCast) return (await castKeepsValues(e.TypeCast.typeName, ctx.engine)) && provenNotNull(e.TypeCast.arg, ctx);
   if (e.NullTest || e.BooleanTest) return true;
+  if (e.A_ArrayExpr) return true; // ARRAY[...] is an array even when empty or holding NULLs
   if (e.SubLink) return e.SubLink.subLinkType === "EXISTS_SUBLINK";
   if (e.CoalesceExpr) return someProven(e.CoalesceExpr.args, ctx);
   if (e.MinMaxExpr) return someProven(e.MinMaxExpr.args, ctx); // GREATEST/LEAST skip NULLs
@@ -544,7 +545,8 @@ function qualifiedName(parts: Node[] | undefined): { name: string; overridable: 
 
 /** Built-in casts turn non-null values into non-null values; a cast function the schema defines may not. */
 async function castKeepsValues(typeName: Node, engine: Engine): Promise<boolean> {
-  const names: string[] = (typeName?.names ?? []).map((n: Node) => quote(n.String?.sval ?? ""));
+  // Quote every part: to_regtype parses with the type grammar, where an unquoted `char` is bpchar.
+  const names: string[] = (typeName?.names ?? []).map((n: Node) => `"${(n.String?.sval ?? "").replace(/"/g, '""')}"`);
   const oid = await engine.typeOid(names.join(".") + (typeName?.arrayBounds?.length ? "[]" : ""));
   if (oid === null) return false;
   const { castTargets } = await shadowing(engine);

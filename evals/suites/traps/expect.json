@@ -251,5 +251,10 @@
     "month": "nullable",
     "dow": "nullable",
     "year_text": "nullable"
+  },
+  "arrayConstructors": {
+    "labels": "nonnull",
+    "empty": "nonnull",
+    "ids": "nonnull"
   }
 }
