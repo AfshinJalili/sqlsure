@@ -12,5 +12,5 @@
     "erasableSyntaxOnly": true,
     "verbatimModuleSyntax": true
   },
-  "include": ["src", "tests", "evals/*.ts", "evals/lib"]
+  "include": ["src", "tests", "evals/*.ts", "evals/lib", "media/intro/*.ts"]
 }

@@ -5,3 +5,7 @@ evals/_*.ts
 evals/smoke/
 *.tsbuildinfo
 .DS_Store
+media/*.mp4
+media/stills/
+media/.chrome-profile/
+media/intro/content.js

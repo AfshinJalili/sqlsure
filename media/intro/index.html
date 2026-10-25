@@ -1,0 +1,334 @@
+<!doctype html>
+<!--
+  sqlsure intro video, 1920x1080. Every frame is a pure function of time: render.ts calls
+  window.setTime(seconds) and screenshots the page. Open this file in a browser and add #play to
+  watch it live. The code and compiler output shown are copied verbatim from a real run
+  (see demo/ and render.ts).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>sqlsure intro</title>
+<style>
+  @font-face { font-family: Inter; font-weight: 400; src: url(fonts/inter-latin-400-normal.woff2); }
+  @font-face { font-family: Inter; font-weight: 600; src: url(fonts/inter-latin-600-normal.woff2); }
+  @font-face { font-family: Inter; font-weight: 800; src: url(fonts/inter-latin-800-normal.woff2); }
+  @font-face { font-family: JBM; font-weight: 400; src: url(fonts/jetbrains-mono-latin-400-normal.woff2); }
+  @font-face { font-family: JBM; font-weight: 700; src: url(fonts/jetbrains-mono-latin-700-normal.woff2); }
+
+  :root {
+    --bg: #0a0c0f;
+    --panel: #11151b;
+    --panel-2: #0d1116;
+    --line: #222a35;
+    --text: #e8ebef;
+    --muted: #8b95a5;
+    --dim: #566070;
+    --accent: #5eead4;
+    --red: #ff6b6b;
+    --kw: #c4a7ff;
+    --str: #9be39b;
+    --param: #ffd27a;
+    --type: #7cc7ff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); }
+  body { font-family: Inter, sans-serif; color: var(--text); position: relative; -webkit-font-smoothing: antialiased; }
+
+  .scene { position: absolute; inset: 0; opacity: 0; }
+  .glow {
+    position: absolute; inset: 0; pointer-events: none;
+    background: radial-gradient(1200px 700px at 50% 120%, rgba(94, 234, 212, 0.10), transparent 70%);
+  }
+  .grid {
+    position: absolute; inset: 0; pointer-events: none; opacity: 0.35;
+    background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+    background-size: 96px 96px;
+    mask-image: radial-gradient(900px 600px at 50% 50%, black, transparent 75%);
+  }
+
+  /* Title */
+  .wordmark { position: absolute; left: 0; right: 0; top: 330px; text-align: center; font-weight: 800; font-size: 200px; letter-spacing: -8px; }
+  .wordmark .sure { color: var(--accent); }
+  .tagline { position: absolute; left: 0; right: 0; text-align: center; font-size: 56px; font-weight: 600; letter-spacing: -1px; }
+  .tagline.one { top: 600px; color: var(--text); }
+  .tagline.two { top: 680px; color: var(--muted); }
+
+  /* Captions */
+  .caption { position: absolute; left: 110px; top: 78px; font-size: 62px; font-weight: 800; letter-spacing: -2px; }
+  .sub { position: absolute; left: 112px; top: 166px; font-size: 34px; color: var(--muted); font-weight: 400; }
+
+  /* Panes */
+  .pane { position: absolute; background: var(--panel); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; box-shadow: 0 40px 120px rgba(0,0,0,0.55); }
+  .tab { height: 58px; display: flex; align-items: center; gap: 12px; padding: 0 26px; background: var(--panel-2); border-bottom: 1px solid var(--line); font-family: JBM; font-size: 22px; color: var(--muted); }
+  .dot { width: 13px; height: 13px; border-radius: 50%; background: #2a323d; }
+  .tab .name { margin-left: 14px; color: var(--text); }
+  pre { font-family: JBM; font-size: 29px; line-height: 46px; padding: 26px 34px; white-space: pre; color: var(--text); }
+  .ln { display: inline-block; width: 40px; color: var(--dim); margin-right: 22px; text-align: right; }
+  .k { color: var(--kw); }
+  .s { color: var(--str); }
+  .p { color: var(--param); }
+  .c { color: var(--dim); }
+  .t { color: var(--type); }
+  .err { color: var(--red); }
+  .cursor { display: inline-block; width: 15px; height: 34px; background: var(--accent); vertical-align: -6px; }
+
+  .hover {
+    position: absolute; background: #161c24; border: 1px solid #2e3846; border-radius: 12px; padding: 18px 26px;
+    font-family: JBM; font-size: 27px; line-height: 40px; white-space: pre; box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  }
+  .squiggle { text-decoration: underline wavy var(--red); text-decoration-thickness: 2px; text-underline-offset: 8px; }
+  .strike-row { position: absolute; left: 0; right: 0; height: 46px; background: rgba(255, 107, 107, 0.14); border-left: 4px solid var(--red); }
+
+  /* Statements */
+  .stmt { position: absolute; left: 160px; font-weight: 800; letter-spacing: -2.5px; }
+  .stmt.big { font-size: 104px; }
+  .stmt.mid { font-size: 46px; letter-spacing: -0.5px; font-weight: 600; color: var(--muted); }
+  .stmt .x { color: var(--accent); }
+
+  /* Scorecard */
+  .row { position: absolute; left: 160px; right: 160px; height: 136px; display: flex; align-items: center; gap: 44px; border-bottom: 1px solid var(--line); }
+  .row .num { width: 330px; font-weight: 800; font-size: 84px; letter-spacing: -3px; color: var(--accent); text-align: right; font-variant-numeric: tabular-nums; }
+  .row .label { font-size: 38px; font-weight: 600; }
+  .row .label small { display: block; font-size: 27px; color: var(--muted); font-weight: 400; margin-top: 6px; }
+
+  /* CTA */
+  .install { position: absolute; left: 50%; top: 470px; transform: translateX(-50%); font-family: JBM; font-size: 64px; padding: 34px 60px; border-radius: 22px; background: var(--panel); border: 1px solid #2e3846; white-space: nowrap; }
+  .install .dollar { color: var(--dim); margin-right: 26px; }
+  .foot { position: absolute; left: 0; right: 0; text-align: center; font-size: 36px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="grid"></div>
+<div class="glow"></div>
+
+<!-- 1. Title -->
+<section class="scene" id="s1">
+  <div class="wordmark" id="wordmark">sql<span class="sure">sure</span></div>
+  <div class="tagline one" id="tag1"></div>
+  <div class="tagline two" id="tag2"></div>
+</section>
+
+<!-- 2. Import a .sql file -->
+<section class="scene" id="s2">
+  <div class="caption" id="cap2">Write SQL. Import it.</div>
+  <div class="sub" id="sub2">tsc reads the row type from your schema. No codegen.</div>
+  <div class="pane" id="sqlPane" style="left:110px; top:262px; width:760px; height:420px">
+    <div class="tab"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="name">users.sql</span></div>
+    <pre id="sqlCode"></pre>
+  </div>
+  <div class="pane" id="tsPane" style="left:910px; top:262px; width:900px; height:420px">
+    <div class="tab"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="name">app.ts</span></div>
+    <pre id="tsCode"></pre>
+  </div>
+  <div class="hover" id="hover" style="left:1010px; top:560px"></div>
+</section>
+
+<!-- 3. Change the schema -->
+<section class="scene" id="s3">
+  <div class="caption">Drop a column.</div>
+  <div class="sub">Every query that uses it fails tsc, at the exact line in the .sql file.</div>
+  <div class="pane" id="schemaPane" style="left:110px; top:262px; width:1000px; height:390px">
+    <div class="tab"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="name">db/schema.sql</span></div>
+    <div style="position:relative">
+      <div class="strike-row" id="strikeRow" style="top:118px"></div>
+      <pre id="schemaCode"></pre>
+    </div>
+  </div>
+  <div class="pane" id="termPane" style="left:110px; top:682px; width:1700px; height:330px">
+    <div class="tab"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="name">terminal</span></div>
+    <pre id="term" style="font-size:27px; line-height:42px"></pre>
+  </div>
+</section>
+
+<!-- 4. How -->
+<section class="scene" id="s4">
+  <div class="stmt big" id="st1" style="top:250px"><span class="x">No</span> codegen.</div>
+  <div class="stmt big" id="st2" style="top:380px"><span class="x">No</span> generated files.</div>
+  <div class="stmt mid" id="st3" style="top:560px">A real Postgres, compiled to WebAssembly and running inside tsc,<br>checks every query against your schema.</div>
+  <div class="stmt mid" id="st4" style="top:720px; color: var(--text)">Any SQL Postgres accepts works. Every error is Postgres' own.</div>
+</section>
+
+<!-- 5. Evidence -->
+<section class="scene" id="s5">
+  <div class="caption" id="cap5">Don't take our word for it.</div>
+  <div class="sub">Every release runs an eval suite against real Postgres and the real pg driver.</div>
+  <div id="rows"></div>
+</section>
+
+<!-- 6. CTA -->
+<section class="scene" id="s6">
+  <div class="wordmark" style="top:190px; font-size:140px; letter-spacing:-5px">sql<span class="sure">sure</span></div>
+  <div class="install" id="install"><span class="dollar">$</span><span id="installText"></span></div>
+  <div class="foot" style="top:690px">A TypeScript 7.1 content mapper for Postgres · MIT</div>
+  <div class="foot" style="top:752px; color: var(--text)">npmjs.com/package/sqlsure</div>
+</section>
+
+<script src="content.js"></script>
+<script>
+  const C = window.CONTENT;
+  const $ = (id) => document.getElementById(id);
+  const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+  const seg = (t, a, b) => clamp((t - a) / (b - a));
+  const ease = (x) => 1 - Math.pow(1 - x, 3);
+  const inOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  function highlight(code, lang) {
+    const rules = lang === "sql"
+      ? [[/^--[^\n]*/, "c"], [/^'[^']*'/, "s"], [/^:[A-Za-z_]\w*\??/, "p"],
+         [/^\b(select|from|where|create|table|primary|key|not|null|unique|default|serial|text|timestamptz|now)\b/i, "k"]]
+      : [[/^\/\/[^\n]*/, "c"], [/^"[^"]*"/, "s"], [/^\b(import|from|const|await|type)\b/, "k"],
+         [/^\b(number|string|null|Date)\b/, "t"]];
+    let out = "", i = 0;
+    while (i < code.length) {
+      const rest = code.slice(i);
+      let hit = null;
+      if (i === 0 || !/\w/.test(code[i - 1])) for (const [re, cls] of rules) { const m = re.exec(rest); if (m) { hit = [m[0], cls]; break; } }
+      if (hit) { out += `<span class="${hit[1]}">${esc(hit[0])}</span>`; i += hit[0].length; }
+      else { out += esc(code[i]); i++; }
+    }
+    return out;
+  }
+
+  /** Renders `code` with line numbers, showing the first `chars` characters and a cursor. */
+  function typed(code, lang, chars, cursor, wrapLine) {
+    const shown = code.slice(0, Math.floor(chars));
+    const lines = shown.split("\n");
+    return lines.map((l, i) => {
+      let html = highlight(l, lang);
+      if (wrapLine) html = wrapLine(i, l, html);
+      const cur = cursor && i === lines.length - 1 ? '<span class="cursor"></span>' : "";
+      return `<span class="ln">${i + 1}</span>${html}${cur}`;
+    }).join("\n");
+  }
+
+  function show(id, t, a, b, fade = 0.45) {
+    const o = Math.min(seg(t, a, a + fade), 1 - seg(t, b - fade, b));
+    $(id).style.opacity = o;
+    return o;
+  }
+
+  function rise(el, p, dist = 40) {
+    el.style.opacity = ease(p);
+    el.style.transform = `translateY(${(1 - ease(p)) * dist}px)`;
+  }
+
+  // Timeline, in seconds.
+  const T = { s1: [0, 4.6], s2: [4.4, 14.6], s3: [14.4, 25.4], s4: [25.2, 31.6], s5: [31.4, 40.6], s6: [40.4, 46] };
+  window.DURATION = 46;
+
+  window.setTime = function (t) {
+    // 1. Title
+    if (show("s1", t, ...T.s1) > 0) {
+      const w = $("wordmark");
+      const p = ease(seg(t, 0.15, 1.1));
+      w.style.opacity = p;
+      w.style.transform = `translateY(${(1 - p) * 30}px) scale(${0.96 + 0.04 * p})`;
+      const l1 = C.tagline1, l2 = C.tagline2;
+      $("tag1").textContent = l1.slice(0, Math.floor(seg(t, 1.2, 2.2) * l1.length));
+      $("tag2").textContent = l2.slice(0, Math.floor(seg(t, 2.2, 3.4) * l2.length));
+    }
+
+    // 2. Import
+    if (show("s2", t, ...T.s2) > 0) {
+      const b = T.s2[0];
+      rise($("cap2"), seg(t, b + 0.1, b + 0.7));
+      rise($("sub2"), seg(t, b + 0.3, b + 0.9));
+      rise($("sqlPane"), seg(t, b + 0.4, b + 1.0), 30);
+      rise($("tsPane"), seg(t, b + 0.6, b + 1.2), 30);
+      const sqlP = seg(t, b + 1.0, b + 3.6);
+      $("sqlCode").innerHTML = typed(C.usersSql, "sql", sqlP * C.usersSql.length, sqlP < 1);
+      const tsP = seg(t, b + 3.8, b + 6.0);
+      $("tsCode").innerHTML = typed(C.appTs, "ts", tsP * C.appTs.length, tsP > 0 && tsP < 1);
+      const h = seg(t, b + 6.4, b + 6.9);
+      const hover = $("hover");
+      hover.innerHTML = highlight(C.hoverType, "ts");
+      hover.style.opacity = ease(h);
+      hover.style.transform = `translateY(${(1 - ease(h)) * 14}px)`;
+    }
+
+    // 3. Schema change
+    if (show("s3", t, ...T.s3) > 0) {
+      const b = T.s3[0];
+      rise($("schemaPane"), seg(t, b + 0.2, b + 0.8), 30);
+      rise($("termPane"), seg(t, b + 0.4, b + 1.0), 30);
+      const del = seg(t, b + 1.8, b + 2.6);
+      const target = C.droppedLine;
+      const lines = C.schemaSql.split("\n");
+      const idx = lines.indexOf(target);
+      // Highlight the line, then delete it character by character from the end.
+      const marker = seg(t, b + 1.2, b + 1.6);
+      $("strikeRow").style.top = `${26 + idx * 46}px`;
+      $("strikeRow").style.opacity = del >= 1 ? 0 : marker;
+      const kept = target.slice(0, Math.round(target.length * (1 - del)));
+      const now = lines.map((l, i) => (i === idx ? kept : l)).filter((l, i) => !(i === idx && del >= 1)).join("\n");
+      $("schemaCode").innerHTML = typed(now, "sql", now.length, false);
+
+      const cmd = C.command;
+      const cmdP = seg(t, b + 3.0, b + 4.3);
+      let term = `<span class="c">$</span> ${esc(cmd.slice(0, Math.floor(cmdP * cmd.length)))}`;
+      if (cmdP < 1) term += '<span class="cursor"></span>';
+      const outLines = C.tscOutput.split("\n");
+      const shownOut = Math.floor(seg(t, b + 4.9, b + 5.6) * outLines.length);
+      for (const line of outLines.slice(0, shownOut)) term += "\n" + colorTsc(line);
+      $("term").innerHTML = term;
+    }
+
+    // 4. Statements
+    if (show("s4", t, ...T.s4) > 0) {
+      const b = T.s4[0];
+      rise($("st1"), seg(t, b + 0.2, b + 0.8));
+      rise($("st2"), seg(t, b + 0.9, b + 1.5));
+      rise($("st3"), seg(t, b + 2.0, b + 2.6));
+      rise($("st4"), seg(t, b + 3.2, b + 3.8));
+    }
+
+    // 5. Evidence
+    if (show("s5", t, ...T.s5) > 0) {
+      const b = T.s5[0];
+      rise($("cap5"), seg(t, b + 0.1, b + 0.7));
+      const rows = $("rows");
+      if (!rows.children.length) {
+        rows.innerHTML = C.evidence.map((r, i) =>
+          `<div class="row" style="top:${300 + i * 160}px"><div class="num"></div><div class="label">${esc(r.label)}<small>${esc(r.detail)}</small></div></div>`).join("");
+      }
+      C.evidence.forEach((r, i) => {
+        const p = seg(t, b + 1.0 + i * 1.2, b + 1.9 + i * 1.2);
+        const el = rows.children[i];
+        rise(el, p, 24);
+        el.querySelector(".num").textContent = r.count(ease(p));
+      });
+    }
+
+    // 6. CTA
+    if (show("s6", t, ...T.s6, 0.5) > 0) {
+      const b = T.s6[0];
+      const p = ease(seg(t, b + 0.3, b + 0.9));
+      $("install").style.opacity = p;
+      $("install").style.transform = `translateX(-50%) scale(${0.97 + 0.03 * p})`;
+      const cmd = "npm install sqlsure";
+      $("installText").textContent = cmd.slice(0, Math.floor(seg(t, b + 0.9, b + 2.0) * cmd.length));
+    }
+    // Fade the very end to black.
+    document.body.style.opacity = 1 - seg(t, window.DURATION - 0.6, window.DURATION);
+  };
+
+  function colorTsc(line) {
+    let html = esc(line);
+    html = html.replace(/(error TS\w+)/, '<span class="err">$1</span>');
+    html = html.replace(/^(\S+\.sql)(:\d+:\d+)/, '<span class="t">$1</span><span class="p">$2</span>');
+    html = html.replace(/^(\s*)(~+)$/, '$1<span class="err">$2</span>');
+    html = html.replace(/^(Found .*)$/, '<span class="c">$1</span>');
+    return html;
+  }
+
+  window.setTime(0);
+  if (location.hash === "#play") {
+    const start = performance.now();
+    const loop = () => { window.setTime(((performance.now() - start) / 1000) % window.DURATION); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  }
+</script>
+</body>
+</html>

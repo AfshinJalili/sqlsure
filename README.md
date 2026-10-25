@@ -1,5 +1,9 @@
 # sqlsure
 
+[![npm](https://img.shields.io/npm/v/sqlsure)](https://www.npmjs.com/package/sqlsure)
+[![license](https://img.shields.io/npm/l/sqlsure)](./LICENSE)
+[![node](https://img.shields.io/node/v/sqlsure)](https://nodejs.org)
+
 **Import a `.sql` file in TypeScript. Get types Postgres itself vouches for. No codegen.**
 
 ```sql
@@ -15,38 +19,27 @@ const user = await getUser(pool, { id: 42 });
 //    ^? { id: number; email: string; display_name: string | null; created_at: Date } | null
 ```
 
-Drop a column in your schema and every query that touches it fails `tsc`, pointing at the exact line in the `.sql` file. There is no generator to run, no generated files to commit, and nothing to forget to regenerate.
+Drop a column from your schema and every query that uses it fails `tsc`, with the error at the exact line in the `.sql` file. There is no generator to run, no generated files to commit, and nothing to forget to regenerate.
 
-sqlsure is a [TypeScript 7.1 content mapper](https://github.com/microsoft/typescript-go/pull/4712): `tsc` hands it each `.sql` file and it returns the types. Your queries are checked by a real Postgres (compiled to WebAssembly, running in-process, holding only your schema), so any SQL Postgres accepts works, and every error message is Postgres' own.
+sqlsure is a [TypeScript 7.1 content mapper](https://github.com/microsoft/typescript-go/pull/4712): `tsc` hands it each `.sql` file and it returns the types. A real Postgres (compiled to WebAssembly, running in-process, holding only your schema) checks every query, so any SQL Postgres accepts works, and every error message is Postgres' own.
 
-## Why trust the types?
-
-Typed-SQL tools usually ask you to take their word for it. sqlsure ships the evidence: an eval suite that runs every query on a **real Postgres through the real `pg` driver** — on an empty database and on randomly seeded ones built to break types (NULL wherever allowed, JSON `null`, arrays holding NULL, parents with no children) — and checks every value that comes back against the type sqlsure claimed. It also runs against [sqlc's](https://github.com/sqlc-dev/sqlc) end-to-end test suite, a corpus of real-world queries written by other people, and mutation-tests itself: deliberate bugs are injected into sqlsure, and the oracle must catch every one.
-
-<!-- scorecard:start -->
-|  | Check | Result | Threshold |
-| --- | --- | --- | --- |
-| ✅ | Soundness: values contradicting their type | 0 | = 0 |
-| ✅ | Precision: truly non-null columns typed non-null | 86.9% (86/99) | ≥ 85% |
-| ✅ | Breadth: real-world queries typed (sqlc corpus) | 97.1% (531/547) | ≥ 90% |
-| ✅ | Feature fixtures (exact types through tsc) | 100% | = 100% |
-| ✅ | Negative control fails | yes | yes |
-| ✅ | Diagnostics at exact line:column | 100% | = 100% |
-| ✅ | Mutations killed by the oracle | 100% (9/9) | = 100% |
-<!-- scorecard:end -->
-
-The full report, including every precision miss and every corpus query sqlsure does not type, is in [SCORECARD.md](./SCORECARD.md). Run it yourself with `npm run evals`.
+- [Setup](#setup)
+- [Writing queries](#writing-queries)
+- [Types](#types)
+- [Why trust the types?](#why-trust-the-types)
+- [Limitations](#limitations)
+- [Performance](#performance)
 
 ## Setup
 
-Requires TypeScript 7.1 (`typescript@beta`) and Node 22.15 or later.
+Requires TypeScript 7.1 (`typescript@beta`) and Node 22.18 or later.
 
 ```sh
 npm install sqlsure pg
 npm install -D typescript@beta
 ```
 
-Point sqlsure at your schema in `tsconfig.json`: a `.sql` file, a folder of migrations (applied in path order; `-- migrate:down` and `-- +goose Down` sections are skipped), or a list of either.
+Point sqlsure at your schema in `tsconfig.json`. The schema can be a `.sql` file, a folder of migrations (applied in path order; `-- migrate:down` and `-- +goose Down` sections are skipped), or a list of either.
 
 ```jsonc
 {
@@ -63,13 +56,15 @@ Type-check with `--runExternalCode`, the flag that lets `tsc` run content mapper
 tsc --noEmit --runExternalCode
 ```
 
-At run time, load sqlsure's hook so the import works in Node (it needs neither the schema nor a database: it only splits the file and rewrites parameters):
+At run time, load sqlsure's hook so the import works in Node. The hook needs no schema and no database; it only splits the file and rewrites parameters.
 
 ```sh
 node --import sqlsure/register app.ts
 ```
 
 In VS Code, install the TypeScript 7 extension (`TypeScriptTeam.native-preview`) and set `"js/ts.experimental.useTsgo": true`.
+
+A complete project is in [`examples/basic`](./examples/basic).
 
 > **Security.** `--runExternalCode` lets `tsc` run the content mappers your `tsconfig.json` names. sqlsure runs your schema SQL inside its private in-process Postgres and nothing else; it never connects to a database. Only pass the flag for projects whose `contentMappers` you trust.
 
@@ -89,6 +84,8 @@ INSERT INTO users (email, display_name) VALUES (:email, :displayName?) RETURNING
 DELETE FROM users WHERE id = :id;
 ```
 
+Each query starts with a `-- name: <name> :<mode>` line (sqlc's `/* name: getUser :one */` form works too) and holds one statement. The name becomes the export.
+
 | Mode | Returns |
 | --- | --- |
 | `:one` | `Row \| null` (the first row) |
@@ -96,30 +93,41 @@ DELETE FROM users WHERE id = :id;
 | `:exec` | `void` |
 | `:execrows` | `number` of affected rows |
 
-Parameters are named, `:name`. A name used twice is one parameter. `:name?` accepts `null`. Casts (`::text`), strings, quoted identifiers, dollar-quoted bodies and comments are left alone. The `/* name: x :one */` header form from sqlc works too.
+**Parameters** are named: `:name`. A name used twice is one parameter, and `:name?` also accepts `null`. Casts (`::text`), strings, quoted identifiers, dollar-quoted bodies and comments are left alone. In an array subscript, a colon after a value is a slice (`arr[1:n]`); `ARRAY[:a, :b]` and `arr[:i]` are parameters.
 
-Every query function takes anything with node-postgres' `query(text, values)` — a `pg` `Client`, `Pool` or `PoolClient` — and carries `.sql` (the SQL sent, with `$1` placeholders) and `.paramNames`.
+**Calling a query.** Every query function takes anything with node-postgres' `query(text, values)` method (a `pg` `Client`, `Pool` or `PoolClient`) and its parameters as an object. Each function also carries `.sql` (the SQL it sends, with `$1` placeholders), `.paramNames` and `.mode`. The file also exports a `GetUserParams` and `GetUserRow` type for each query.
 
-## What you get
+```ts
+import { listOrders, deleteUser, type ListOrdersRow } from "./orders.sql";
 
-<!-- features:start -->
-|  | Feature |
+const orders: ListOrdersRow[] = await listOrders(pool, { status: "paid", since: new Date("2026-01-01") });
+
+const client = await pool.connect();
+await client.query("BEGIN");
+const deleted = await deleteUser(client, { id: 7 }); // number of rows deleted
+await client.query("COMMIT");
+client.release();
+```
+
+## Types
+
+Types follow what node-postgres returns with its default parsers:
+
+| Postgres | TypeScript |
 | --- | --- |
-| ✅ | Aggregates and windows: count/row_number/EXISTS/COALESCE(…, literal) are non-null; sum/max/lag are nullable |
-| ✅ | Arrays (elements may be NULL); arrays of enums come back as text, typed string |
-| ✅ | CTEs and set operations (UNION output is conservatively nullable) |
-| ✅ | Enums become string-literal unions, for columns and parameters |
-| ✅ | Joins: INNER keeps NOT NULL, LEFT/RIGHT/FULL/LATERAL make the outer side nullable |
-| ✅ | json/jsonb as a Json value; JSON parameters take objects or pre-stringified JSON |
-| ✅ | Every query function carries its final SQL and parameter order |
-| ✅ | Schema-qualified tables, quoted identifiers, views (view columns are conservatively nullable) |
-| ✅ | Named :params (reused names are one parameter); casts, strings, dollar quotes and comments are left alone |
-| ✅ | Scalar types as node-postgres returns them (int8/numeric as string, dates as Date, bytea as Buffer, interval, point) |
-| ✅ | SELECT with NOT NULL and nullable columns; :one returns Row | null; sqlc-style /* name: */ headers |
-| ✅ | INSERT/UPDATE … RETURNING, :exec (void) and :execrows (affected row count) |
-<!-- features:end -->
+| `int2`, `int4`, `float4`, `float8`, `oid` | `number` |
+| `int8`, `numeric`, `money` | `string` (no silent precision loss) |
+| `text`, `varchar`, `uuid`, `time`, `inet`, … | `string` |
+| `date`, `timestamp`, `timestamptz` | `Date` |
+| `bool` | `boolean` |
+| `bytea` | `Buffer` |
+| `json`, `jsonb` | `Json` |
+| `interval` | `Interval` (`{ days?: number; hours?: number; … }`) |
+| enums | string-literal unions, such as `"draft" \| "live"` |
+| arrays | `(T \| null)[]`, because Postgres arrays can hold NULL |
+| composites, ranges, domains and other types | `string` (the raw text pg returns) |
 
-Types follow what node-postgres returns with its default parsers: `bigint` and `numeric` are `string` (no silent precision loss), `date` and `timestamp[tz]` are `Date`, `bytea` is `Buffer`, `json`/`jsonb` is a `Json` value, enums are string-literal unions, and array elements are always `T | null` because Postgres arrays can hold NULL.
+Parameters accept what `pg` serializes: an `int8` parameter takes `number | string | bigint`, a date takes `Date | string`, a JSON parameter takes an object or a pre-stringified JSON value.
 
 ### How nullability is decided
 
@@ -133,43 +141,71 @@ or it is an expression that cannot be NULL: `count(…)`, `EXISTS`, `IS [NOT] NU
 
 Everything else is `| null`. That is deliberately conservative: a missing `| null` is a crash in production, an extra one is a `?.` you did not need. The scorecard measures both directions.
 
-## Limitations (v0.1)
+<!-- features:start -->
+|  | Feature |
+| --- | --- |
+| ✅ | Aggregates and windows: count/row_number/EXISTS/COALESCE(…, literal) are non-null; sum/max/lag are nullable |
+| ✅ | Arrays (elements may be NULL); arrays of enums come back as text, typed string |
+| ✅ | CTEs and set operations (UNION output is conservatively nullable) |
+| ✅ | Enums become string-literal unions, for columns and parameters |
+| ✅ | Joins: INNER keeps NOT NULL, LEFT/RIGHT/FULL/LATERAL make the outer side nullable |
+| ✅ | json/jsonb as a Json value; JSON parameters take objects or pre-stringified JSON |
+| ✅ | Every query function carries its final SQL and parameter order |
+| ✅ | Schema-qualified tables, quoted identifiers, views (view columns are conservatively nullable), queries named like sqlsure types |
+| ✅ | Named :params (reused names are one parameter); casts, strings, dollar quotes and comments are left alone |
+| ✅ | Scalar types as node-postgres returns them (int8/numeric as string, dates as Date, bytea as Buffer, interval, point) |
+| ✅ | SELECT with NOT NULL and nullable columns; :one returns Row | null; sqlc-style /* name: */ headers |
+| ✅ | INSERT/UPDATE … RETURNING, :exec (void) and :execrows (affected row count) |
+<!-- features:end -->
+
+Each row above is a fixture in [`evals/features`](./evals/features) whose exact types are asserted through the real `tsc`.
+
+## Why trust the types?
+
+Typed-SQL tools usually ask you to take their word for it. sqlsure ships the evidence. Its eval suite runs every query on a **real Postgres through the real `pg` driver**, on an empty database and on randomly seeded ones built to break types (NULL wherever allowed, JSON `null`, arrays holding NULL, parents with no children), and checks every returned value against the type sqlsure claimed. It also runs against [sqlc's](https://github.com/sqlc-dev/sqlc) end-to-end test suite, a corpus of real-world queries written by other people. And it mutation-tests itself: deliberate bugs are switched on inside sqlsure, and the oracle must catch every one.
+
+<!-- scorecard:start -->
+|  | Check | Result | Threshold |
+| --- | --- | --- | --- |
+| ✅ | Soundness: values contradicting their type | 0 | = 0 |
+| ✅ | Precision: truly non-null columns typed non-null | 87.0% (87/100) | ≥ 85% |
+| ✅ | Breadth: real-world queries typed (sqlc corpus) | 97.1% (532/548) | ≥ 90% |
+| ✅ | Feature fixtures (exact types through tsc) | 100% | = 100% |
+| ✅ | Negative control fails | yes | yes |
+| ✅ | Diagnostics at exact line:column | 100% | = 100% |
+| ✅ | Mutations killed by the oracle | 100% (9/9) | = 100% |
+<!-- scorecard:end -->
+
+CI runs all of it on every push. The full report, including every precision miss and every corpus query sqlsure does not type, is in [SCORECARD.md](./SCORECARD.md); [CONTRIBUTING.md](./CONTRIBUTING.md) explains how each check works and how to run it.
+
+## Limitations
 
 - **Postgres only**, with the default `pg` type parsers. Custom type parsers (`bigint` as `BigInt`, say) are not modeled yet.
 - **Conservative spots**: columns of views, of a table joined to itself, of casts (`id::text`), of generated columns and of `UNION` output are typed nullable even when they cannot be NULL. The scorecard lists every such miss.
 - **Two output columns with the same name are refused** (`SELECT a.id, b.id …`): node-postgres keeps only one of them, so no honest type exists. Rename one with `AS`.
 - **No dynamic SQL**: optional filters and `IN` lists of varying length need a fixed shape (`= ANY(:ids)` works).
-- **JSON arrays as parameters** must be passed pre-stringified: `pg` turns JS arrays into Postgres arrays.
-- **Extensions**: those PGlite ships (`citext`, `hstore`, `ltree`, `pg_trgm`, `pgcrypto`, `uuid-ossp` and more) load when your schema creates them; others (PostGIS, pgvector) are not available yet.
-- Requires the TypeScript 7.1 beta. The language server runs content mappers in VS Code through the TypeScript 7 extension.
+- **JSON arrays as parameters** must be passed pre-stringified, because `pg` turns JS arrays into Postgres arrays.
+- **Extensions**: the ones PGlite ships (`citext`, `hstore`, `ltree`, `pg_trgm`, `pgcrypto`, `uuid-ossp` and more) load when your schema creates them; others (PostGIS, pgvector) are not available yet.
+- **TypeScript 7.1 beta** is required: content mappers are new in it. In editors, the TypeScript 7 language server runs them.
 
 ## Performance
 
 <!-- perf:start -->
 | Queries | tsc, warm | tsc, first run on a machine | plain tsc (no .sql) | per query |
 | --- | --- | --- | --- | --- |
-| 10 | 1.22 s | 3.49 s | 0.14 s | 108.4 ms |
-| 100 | 1.46 s | 4.07 s | 0.14 s | 13.3 ms |
-| 1000 | 2.41 s | 4.71 s | 0.14 s | 2.3 ms |
+| 10 | 0.93 s | 2.85 s | 0.15 s | 77.9 ms |
+| 100 | 1.19 s | 3.03 s | 0.13 s | 10.6 ms |
+| 1000 | 2.05 s | 3.83 s | 0.12 s | 1.9 ms |
 
-Run time: 1.2 µs added per query call over calling `pg` directly (71 µs raw round trip to a local Postgres, median of 5 × 3000 calls).
+Run time: -11.6 µs added per query call over calling `pg` directly (205 µs raw round trip to a local Postgres, median of 5 × 3000 calls).
 <!-- perf:end -->
 
-The first run on a machine boots Postgres from scratch (`initdb`); its data directory is then cached in your temp folder and later runs start from it.
+The first run on a machine boots Postgres from scratch (`initdb`); its data directory is then cached in your temp folder (`SQLSURE_CACHE_DIR` to move it), and later runs start from it.
 
-## How the evals work
+## Contributing and releases
 
-`npm run evals` needs a Postgres server (set `SQLSURE_EVAL_PG`, default `postgres://postgres@127.0.0.1:54329/postgres`). It runs six things:
-
-1. **Oracle suites** (`evals/suites`): a realistic shop schema and a suite of traps written to fool nullability inference (outer joins inside subqueries, CTEs on the nullable side, `LATERAL`, `ROLLUP`, `UNION … NULL`, views, schema shadowing, upserts, JSON `null`). Each query runs on real Postgres and every value is checked; real Postgres' `PREPARE` must also agree with every column type. Hand-labeled ground truth (`expect.json`) measures precision.
-2. **The sqlc corpus**: sqlc's end-to-end tests at a pinned commit, deduplicated. Breadth counts the queries real Postgres accepts that sqlsure types; every typed query then goes through the same oracle on seeded data.
-3. **Feature fixtures** (`evals/features`): exact type assertions compiled by the real `tsc --runExternalCode`, plus a negative control that must fail.
-4. **Diagnostics** (`evals/diagnostics`): broken files whose errors must land on the exact line and column.
-5. **Mutation testing**: realistic bugs switched on inside sqlsure one at a time; the oracle must report violations for each.
-6. **Performance**: `tsc` with 10, 100 and 1,000 queries, and per-call overhead over plain `pg`.
-
-The ground-truth labels and the trap queries were written by sqlsure's authors, which is why the external corpus and the mutation tests exist: the first measures sqlsure on SQL it was not tuned for, the second proves the oracle can see the bugs it claims to rule out.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for development and the eval suite, [CHANGELOG.md](./CHANGELOG.md) for what changed, and [RELEASING.md](./RELEASING.md) for how versions are published.
 
 ## License
 
-MIT
+[MIT](./LICENSE)

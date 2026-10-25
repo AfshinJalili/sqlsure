@@ -9,3 +9,6 @@ RETURNING id, email;
 SELECT u.email, count(p.id) AS posts, max(p.title) AS latest_title
 FROM users u LEFT JOIN posts p ON p.author_id = u.id
 GROUP BY u.email;
+
+-- name: deleteUser :execrows
+DELETE FROM users WHERE id = :id;

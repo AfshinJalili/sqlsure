@@ -18,7 +18,7 @@ export interface TscRun {
  * node_modules/sqlsure, a link to the repository itself. npm install prunes that link, so it is
  * recreated before every run.
  */
-function ensureSelfLink(): void {
+export function ensureSelfLink(): void {
   const link = join(ROOT, "node_modules/sqlsure");
   try {
     if (lstatSync(link).isSymbolicLink()) return;

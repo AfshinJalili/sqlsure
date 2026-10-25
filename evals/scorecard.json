@@ -1,5 +1,5 @@
 {
-  "date": "2026-10-25T12:57:00.961Z",
+  "date": "2026-10-25T13:06:35.881Z",
   "postgres": "16.14",
   "thresholds": {
     "soundnessViolations": 0,
@@ -11,8 +11,8 @@
   },
   "soundness": {
     "violations": [],
-    "valuesChecked": 33495,
-    "rowsChecked": 13863,
+    "valuesChecked": 33608,
+    "rowsChecked": 13874,
     "queriesExecuted": 551,
     "schemas": 286
   },
@@ -234,7 +234,7 @@
       }
     ],
     "negativeControlFailed": true,
-    "ms": 1042.4826760000142
+    "ms": 1045.1027009999962
   },
   "diagnostics": [
     {
@@ -439,33 +439,33 @@
       {
         "queries": 10,
         "files": 1,
-        "warmMs": 977.214432000008,
-        "coldMs": 2926.416315999988,
-        "baselineMs": 120.75030599994352,
-        "perQueryMs": 85.64641260000644
+        "warmMs": 928.3352090000117,
+        "coldMs": 2846.3846090000006,
+        "baselineMs": 149.65883400000166,
+        "perQueryMs": 77.867637500001
       },
       {
         "queries": 100,
         "files": 10,
-        "warmMs": 1225.7346170000383,
-        "coldMs": 3264.7043309999863,
-        "baselineMs": 134.8238850000198,
-        "perQueryMs": 10.909107320000185
+        "warmMs": 1189.0880370000086,
+        "coldMs": 3027.3192770000023,
+        "baselineMs": 132.61883500000113,
+        "perQueryMs": 10.564692020000075
       },
       {
         "queries": 1000,
         "files": 100,
-        "warmMs": 2169.0031470000395,
-        "coldMs": 3945.6688420000137,
-        "baselineMs": 119.81733699998586,
-        "perQueryMs": 2.0491858100000537
+        "warmMs": 2052.986598999996,
+        "coldMs": 3833.2056969999976,
+        "baselineMs": 123.2345679999562,
+        "perQueryMs": 1.92975203100004
       }
     ],
     "runtime": {
       "calls": 3000,
-      "rawMsPerCall": 0.21047383100000056,
-      "sqlsureMsPerCall": 0.21348734333333172,
-      "overheadUsPerCall": 3.013512333331164
+      "rawMsPerCall": 0.2053386963333275,
+      "sqlsureMsPerCall": 0.19369749733332234,
+      "overheadUsPerCall": -11.641199000005154
     }
   },
   "suites": [
@@ -477,8 +477,8 @@
       "executedQueries": 23,
       "runs": 534,
       "erroredRuns": 54,
-      "rowsChecked": 1243,
-      "valuesChecked": 5512,
+      "rowsChecked": 1258,
+      "valuesChecked": 5617,
       "labeled": {
         "nonnull": 58,
         "nonnullInferredNonnull": 53,
@@ -503,8 +503,8 @@
       "executedQueries": 33,
       "runs": 132,
       "erroredRuns": 2,
-      "rowsChecked": 1420,
-      "valuesChecked": 2858,
+      "rowsChecked": 1394,
+      "valuesChecked": 2808,
       "labeled": {
         "nonnull": 42,
         "nonnullInferredNonnull": 34,
