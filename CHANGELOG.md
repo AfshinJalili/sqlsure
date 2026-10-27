@@ -4,6 +4,8 @@ All notable changes to sqlsure are listed here. The format follows [Keep a Chang
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-27
+
 ### Added
 
 - Two output columns with the same name are both returned, the second as `id_2` (then `id_3`, skipping names already in use), as in sqlc. They used to be refused. Rows now arrive from `pg` as arrays and get their keys from one rule shared by the types and the run time.
@@ -42,5 +44,6 @@ First release.
 - Supports Node 22.22+ and 24.10+. Older versions start TypeScript 7's compiler with an empty environment, which breaks every content mapper.
 - Eval suite: a soundness oracle against real Postgres and `pg`, precision against hand-labeled ground truth, breadth on sqlc's end-to-end corpus, mutation testing, diagnostics positions, and a smoke test of the packed tarball.
 
-[Unreleased]: https://github.com/AfshinJalili/sqlsure/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/AfshinJalili/sqlsure/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/AfshinJalili/sqlsure/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/AfshinJalili/sqlsure/releases/tag/v0.1.0
