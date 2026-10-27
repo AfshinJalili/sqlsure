@@ -1,26 +1,65 @@
 {
   "name": "sqlsure",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Import .sql files in TypeScript and get types Postgres itself vouches for. A TypeScript 7.1 content mapper. No codegen.",
   "license": "MIT",
   "author": "Afshin Jalili",
-  "repository": { "type": "git", "url": "git+https://github.com/AfshinJalili/sqlsure.git" },
-  "keywords": ["sql", "postgres", "postgresql", "typescript", "content-mapper", "types", "pg", "sqlc"],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AfshinJalili/sqlsure.git"
+  },
+  "keywords": [
+    "sql",
+    "postgres",
+    "postgresql",
+    "typescript",
+    "content-mapper",
+    "types",
+    "pg",
+    "sqlc"
+  ],
   "type": "module",
-  "engines": { "node": "^22.22.0 || >=24.10.0" },
-  "files": ["dist", "README.md", "LICENSE"],
+  "engines": {
+    "node": "^22.22.0 || >=24.10.0"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "exports": {
-    ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" },
-    "./runtime": { "types": "./dist/runtime.d.ts", "default": "./dist/runtime.js" },
-    "./register": { "types": "./dist/register.d.ts", "default": "./dist/register.js" },
-    "./vite": { "types": "./dist/vite.d.ts", "default": "./dist/vite.js" },
-    "./esbuild": { "types": "./dist/esbuild.d.ts", "default": "./dist/esbuild.js" },
-    "./bun": { "types": "./dist/bun.d.ts", "default": "./dist/bun.js" },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./runtime": {
+      "types": "./dist/runtime.d.ts",
+      "default": "./dist/runtime.js"
+    },
+    "./register": {
+      "types": "./dist/register.d.ts",
+      "default": "./dist/register.js"
+    },
+    "./vite": {
+      "types": "./dist/vite.d.ts",
+      "default": "./dist/vite.js"
+    },
+    "./esbuild": {
+      "types": "./dist/esbuild.d.ts",
+      "default": "./dist/esbuild.js"
+    },
+    "./bun": {
+      "types": "./dist/bun.d.ts",
+      "default": "./dist/bun.js"
+    },
     "./package.json": "./package.json"
   },
   "typescript": {
     "contentMapper": {
-      "exec": ["node", "dist/mapper-main.js"],
+      "exec": [
+        "node",
+        "dist/mapper-main.js"
+      ],
       "compilerOptions": [],
       "dynamicConfig": true
     }
@@ -50,15 +89,33 @@
     "typescript": ">=7.1.0-beta"
   },
   "peerDependenciesMeta": {
-    "@electric-sql/pglite-age": { "optional": true },
-    "@electric-sql/pglite-pg_hashids": { "optional": true },
-    "@electric-sql/pglite-pg_ivm": { "optional": true },
-    "@electric-sql/pglite-pg_textsearch": { "optional": true },
-    "@electric-sql/pglite-pg_uuidv7": { "optional": true },
-    "@electric-sql/pglite-pgtap": { "optional": true },
-    "@electric-sql/pglite-pgvector": { "optional": true },
-    "@electric-sql/pglite-postgis": { "optional": true },
-    "typescript": { "optional": true }
+    "@electric-sql/pglite-age": {
+      "optional": true
+    },
+    "@electric-sql/pglite-pg_hashids": {
+      "optional": true
+    },
+    "@electric-sql/pglite-pg_ivm": {
+      "optional": true
+    },
+    "@electric-sql/pglite-pg_textsearch": {
+      "optional": true
+    },
+    "@electric-sql/pglite-pg_uuidv7": {
+      "optional": true
+    },
+    "@electric-sql/pglite-pgtap": {
+      "optional": true
+    },
+    "@electric-sql/pglite-pgvector": {
+      "optional": true
+    },
+    "@electric-sql/pglite-postgis": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@electric-sql/pglite-pgvector": "0.0.12",
