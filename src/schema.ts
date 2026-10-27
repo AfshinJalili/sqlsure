@@ -51,11 +51,15 @@ function expand(path: string): string[] {
   };
   visit(path);
   // By path relative to the folder, so `0002/migration.sql` follows `0001/migration.sql`. Flyway's
-  // repeatable migrations (`R__views.sql`) run after the versioned ones.
-  const repeatable = (p: string) => (/^R__/.test(basename(p)) ? 1 : 0);
-  return out
-    .filter((p) => !isDownFile(basename(p)))
-    .sort((a, b) => repeatable(a) - repeatable(b) || naturalCompare(relative(path, a), relative(path, b)));
+  // repeatable migrations (`R__views.sql`) run after the versioned ones, in plain alphabetical
+  // order of their names, as Flyway runs them: `R__view10` before `R__view2`.
+  const repeatable = (p: string) => /^R__/.test(basename(p));
+  const order = (a: string, b: string) => {
+    if (repeatable(a) !== repeatable(b)) return repeatable(a) ? 1 : -1;
+    if (!repeatable(a)) return naturalCompare(relative(path, a), relative(path, b));
+    return basename(a) < basename(b) ? -1 : basename(a) > basename(b) ? 1 : 0;
+  };
+  return out.filter((p) => !isDownFile(basename(p))).sort(order);
 }
 
 /** golang-migrate's down migrations (`1_x.down.sql`) and Flyway's undo migrations (`U2__x.sql`) never run. */

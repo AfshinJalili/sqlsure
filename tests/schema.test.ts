@@ -74,7 +74,7 @@ $$;
   }
 });
 
-test("migration folders: golang-migrate down files are skipped, unpadded versions sort by number, Flyway undo and repeatable files", async () => {
+test("migration folders: golang-migrate down files are skipped, unpadded versions sort by number, Flyway undo and repeatable files (alphabetical)", async () => {
   const f = folder({
     "migrate/000001_users.up.sql": "CREATE TABLE users (id int PRIMARY KEY, email text NOT NULL);\n",
     "migrate/000001_users.down.sql": "DROP TABLE users;\n",
@@ -85,12 +85,14 @@ test("migration folders: golang-migrate down files are skipped, unpadded version
     "flyway/V10__mood.sql": "ALTER TABLE users ADD COLUMN m text;\n",
     "flyway/U10__mood.sql": "ALTER TABLE users DROP COLUMN m;\n",
     "flyway/R__views.sql": "CREATE OR REPLACE VIEW user_moods AS SELECT id, m FROM users;\n",
+    "flyway/R__view2.sql": "CREATE OR REPLACE VIEW user_ids AS SELECT id FROM users;\n",
+    "flyway/R__view10.sql": "CREATE OR REPLACE VIEW user_emails AS SELECT id, email FROM users;\n",
   });
   try {
     for (const dir of ["migrate", "flyway"])
       assert.deepEqual(await problemsAndColumns(dir, f.config, USERS), { problems: [], columns: ["id email m?"] }, dir);
     const order = resolveSchemaFiles({ schema: "flyway" }, f.config).map((p) => p.slice(p.lastIndexOf("/") + 1));
-    assert.deepEqual(order, ["V1__users.sql", "V2__email.sql", "V10__mood.sql", "R__views.sql"]);
+    assert.deepEqual(order, ["V1__users.sql", "V2__email.sql", "V10__mood.sql", "R__view10.sql", "R__view2.sql", "R__views.sql"]);
   } finally {
     f.done();
   }
