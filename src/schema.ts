@@ -1,7 +1,8 @@
 // Reads the schema a project points at: SQL files or folders of migrations, in path order.
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve } from "node:path";
+import { lineStart, scan } from "./sql-lexer.ts";
 
 export interface SchemaSource {
   files: string[];
@@ -49,19 +50,82 @@ function expand(path: string): string[] {
     }
   };
   visit(path);
-  // Sort by path relative to the folder so `0002/migration.sql` follows `0001/migration.sql`.
-  return out.sort((a, b) => (relative(path, a) < relative(path, b) ? -1 : 1));
+  // By path relative to the folder, so `0002/migration.sql` follows `0001/migration.sql`. Flyway's
+  // repeatable migrations (`R__views.sql`) run after the versioned ones.
+  const repeatable = (p: string) => (/^R__/.test(basename(p)) ? 1 : 0);
+  return out
+    .filter((p) => !isDownFile(basename(p)))
+    .sort((a, b) => repeatable(a) - repeatable(b) || naturalCompare(relative(path, a), relative(path, b)));
 }
 
-export function upSection(text: string): string {
+/** golang-migrate's down migrations (`1_x.down.sql`) and Flyway's undo migrations (`U2__x.sql`) never run. */
+function isDownFile(name: string): boolean {
+  return name.endsWith(".down.sql") || /^U\d[\d._]*__/.test(name);
+}
+
+/**
+ * Orders runs of digits by their number, so `V2__` comes before `V10__` and `2_x` before `10_x`;
+ * everything else by code unit, which keeps zero-padded and timestamped names in their usual order.
+ */
+function naturalCompare(a: string, b: string): number {
+  const digit = (c: string | undefined) => c !== undefined && c >= "0" && c <= "9";
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    if (digit(a[i]) && digit(b[j])) {
+      let ei = i;
+      let ej = j;
+      while (digit(a[ei])) ei++;
+      while (digit(b[ej])) ej++;
+      const x = a.slice(i, ei).replace(/^0+(?=\d)/, "");
+      const y = b.slice(j, ej).replace(/^0+(?=\d)/, "");
+      if (x.length !== y.length) return x.length - y.length;
+      if (x !== y) return x < y ? -1 : 1;
+      i = ei;
+      j = ej;
+    } else {
+      if (a[i] !== b[j]) return a[i] < b[j] ? -1 : 1;
+      i++;
+      j++;
+    }
+  }
+  return a.length - i - (b.length - j);
+}
+
+/** psql meta-commands pg_dump and migration scripts use that change nothing in the schema. */
+const HARMLESS_META_COMMANDS = new Set(["restrict", "unrestrict", "connect", "c", "set", "unset", "encoding", "echo", "qecho", "warn", "pset", "timing"]);
+
+/**
+ * The SQL of one schema file that should run: its up section, with harmless psql meta-commands
+ * blanked out. Blanking keeps every line where it was, so errors point at the right line.
+ */
+export function schemaText(text: string, file: string): string {
   let t = text;
   const up = UP_MARKER.exec(t);
-  if (up) t = t.slice(up.index);
+  if (up) t = blank(t, 0, up.index);
   for (const m of DOWN_MARKERS) {
     const hit = m.exec(t);
     if (hit) t = t.slice(0, hit.index);
   }
+  const code: [number, number][] = [];
+  scan(t, 0, t.length, { code: (start, end) => code.push([start, end]) });
+  for (const m of t.matchAll(/^\\([A-Za-z]+)[^\n]*/gm)) {
+    const at = m.index;
+    if (!code.some(([start, end]) => start <= at && at < end)) continue; // inside a string, body or comment
+    if (!HARMLESS_META_COMMANDS.has(m[1].toLowerCase())) {
+      const line = t.slice(0, lineStart(t, at)).split("\n").length;
+      throw new Error(
+        `sqlsure: ${file}:${line}: psql meta-command \\${m[1]} is not supported in a schema file. Run the SQL it stands for, or list the files it includes in "schema".`,
+      );
+    }
+    t = blank(t, at, at + m[0].length);
+  }
   return t;
+}
+
+/** Replaces text with spaces, keeping newlines, so positions and line numbers do not move. */
+function blank(t: string, from: number, to: number): string {
+  return t.slice(0, from) + t.slice(from, to).replace(/[^\n]/g, " ") + t.slice(to);
 }
 
 export function readSchema(files: string[]): SchemaSource {
@@ -72,7 +136,7 @@ export function readSchema(files: string[]): SchemaSource {
   for (const file of files) {
     const raw = readFileSync(file, "utf8");
     hash.update(file).update("\0").update(raw).update("\0");
-    const text = upSection(raw).replace(/\s*$/, "") + "\n;\n";
+    const text = schemaText(raw, file).replace(/\s*$/, "") + "\n;\n";
     starts.push({ file, start: offset });
     parts.push(text);
     offset += text.length;

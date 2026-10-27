@@ -31,6 +31,13 @@ async function engineFor(schema: SchemaSource): Promise<Engine> {
   return e;
 }
 
+/** Closes every shared engine, so a process that is done analyzing can exit. */
+export async function closeEngines(): Promise<void> {
+  const all = [...engines.values()];
+  engines.clear();
+  await Promise.all(all.map((e) => e.then((x) => x.close()).catch(() => {})));
+}
+
 export class Project {
   readonly options: Options;
   readonly configFileName: string;
