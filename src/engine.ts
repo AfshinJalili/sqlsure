@@ -6,6 +6,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { parse, type ParseNode } from "./sql-parser.ts";
 
 export interface FieldDescription {
   name: string;
@@ -131,9 +132,18 @@ export class Engine {
   }
 
   async loadSchema(sql: string): Promise<void> {
+    const setup = await serverSetup(sql);
     await this.lock(async () => {
       try {
+        const existing = new Set((await this.db.query<{ name: string }>("select rolname::text as name from pg_roles")).rows.map((r) => r.name));
+        for (const role of setup.roles) if (!existing.has(role)) await this.db.exec(`CREATE ROLE ${quoteIdent(role)} NOLOGIN`);
+        if (setup.dropPublic) await this.db.exec("DROP SCHEMA public");
         await this.db.exec(sql);
+        // Queries run on a fresh connection, not in the session that ran the schema: undo a SET
+        // ROLE, and a search_path emptied by pg_dump, which would hide every table.
+        await this.db.exec("RESET SESSION AUTHORIZATION; RESET ROLE");
+        const path = await this.db.query<{ path: string }>("select current_setting('search_path') as path");
+        if (!path.rows[0].path.replace(/""/g, "").trim()) await this.db.exec("RESET search_path");
       } catch (e) {
         throw toPostgresError(e);
       }
@@ -367,6 +377,53 @@ async function importPackaged(name: string, pkg: string): Promise<Record<string,
       `the schema creates extension "${name}", which sqlsure's Postgres loads from a separate package. Install it: npm install -D ${pkg}${version ? `@${version}` : ""}`,
     );
   }
+}
+
+/**
+ * What a fresh PGlite needs before it can run a schema written for a real server, which already
+ * has its roles: the roles the schema names but does not create (owners, grantees, policy roles),
+ * and no `public` schema when the schema creates its own first, as pg_dump writes it after
+ * `public` was dropped and re-created by hand.
+ */
+async function serverSetup(sql: string): Promise<{ roles: string[]; dropPublic: boolean }> {
+  let tree: ParseNode;
+  try {
+    tree = await parse(sql);
+  } catch {
+    return { roles: [], dropPublic: false }; // Postgres reports the syntax error itself
+  }
+  const named = new Set<string>();
+  const created = new Set<string>();
+  const visit = (n: unknown): void => {
+    if (Array.isArray(n)) return n.forEach(visit);
+    if (!n || typeof n !== "object") return;
+    const o = n as ParseNode;
+    if (o.roletype === "ROLESPEC_CSTRING" && o.rolename) named.add(o.rolename);
+    if (o.CreateRoleStmt?.role) created.add(o.CreateRoleStmt.role);
+    for (const r of o.GrantRoleStmt?.granted_roles ?? []) if (r.AccessPriv?.priv_name) named.add(r.AccessPriv.priv_name);
+    const set = o.VariableSetStmt;
+    if (set && (set.name === "role" || set.name === "session_authorization")) {
+      const value = set.args?.[0]?.A_Const?.sval?.sval;
+      if (value && value !== "none") named.add(value);
+    }
+    for (const v of Object.values(o)) visit(v);
+  };
+  visit(tree);
+  // Drop the template's empty public schema only when the schema's first word on it is CREATE.
+  let dropPublic = false;
+  for (const { stmt } of tree.stmts ?? []) {
+    if (stmt?.CreateSchemaStmt?.schemaname === "public") {
+      dropPublic = !stmt.CreateSchemaStmt.if_not_exists;
+      break;
+    }
+    const drop = stmt?.DropStmt;
+    if (drop?.removeType === "OBJECT_SCHEMA" && JSON.stringify(drop.objects ?? []).includes('"sval":"public"')) break;
+  }
+  return { roles: [...named].filter((r) => !created.has(r)).sort(), dropPublic };
+}
+
+function quoteIdent(name: string): string {
+  return `"${name.replace(/"/g, '""')}"`;
 }
 
 function toPostgresError(e: unknown): PostgresError {

@@ -12,7 +12,7 @@ import { execFileSync } from "node:child_process";
 import { Engine, extensionsIn } from "../../src/engine.ts";
 import { analyzeFile } from "../../src/analyze.ts";
 import { parseFile } from "../../src/parse-file.ts";
-import { upSection } from "../../src/schema.ts";
+import { schemaText } from "../../src/schema.ts";
 import { freshDatabase, dropDatabase, preparedTypes } from "./pg.ts";
 import { runSuite, type SuiteResult } from "./suite.ts";
 
@@ -63,8 +63,8 @@ function readPaths(base: string, spec: string | string[], separator: string): st
     const full = join(base, p);
     if (!existsSync(full)) continue;
     if (statSync(full).isDirectory()) {
-      for (const f of readdirSync(full).sort()) if (f.endsWith(".sql")) texts.push(upSection(readFileSync(join(full, f), "utf8")));
-    } else texts.push(upSection(readFileSync(full, "utf8")));
+      for (const f of readdirSync(full).sort()) if (f.endsWith(".sql")) texts.push(schemaText(readFileSync(join(full, f), "utf8"), join(full, f)));
+    } else texts.push(schemaText(readFileSync(full, "utf8"), full));
   }
   return texts.join(separator);
 }
