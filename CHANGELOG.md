@@ -9,6 +9,8 @@ All notable changes to sqlsure are listed here. The format follows [Keep a Chang
 - Two output columns with the same name are both returned, the second as `id_2` (then `id_3`, skipping names already in use), as in sqlc. They used to be refused. Rows now arrive from `pg` as arrays and get their keys from one rule shared by the types and the run time.
 - Node 26 is tested in CI, alongside the oldest and latest supported Node 22 and 24.
 - `.sql` imports outside Node's `--import` hook: `sqlsure/vite` for Vitest, Vite and Rollup, `sqlsure/esbuild` for esbuild and tsup, and `sqlsure/bun` for Bun. The example project runs a Vitest test and a Bun script, and the smoke test checks both.
+- Schemas as people have them: a `pg_dump --schema-only` file loads as it is. Harmless psql meta-commands (`\restrict`, `\set`, `\connect`, …) are skipped; any other one is reported at its file and line. Roles the schema names but does not create (owners, grantees, policy roles) are created first, and the empty `search_path` pg_dump sets is reset before queries are checked.
+- Migration folders of more tools: golang-migrate's `.down.sql` and Flyway's `U__` undo files are skipped, version numbers sort as numbers (`V2__` before `V10__`), and Flyway's repeatable `R__` files run last.
 - pgvector, PostGIS, `pg_uuidv7`, `pg_hashids`, `pg_ivm`, `age`, `pgtap` and `pg_textsearch`: sqlsure loads them from PGlite's extension packages when the schema creates them. They are optional peer dependencies; a missing one is reported with the package and version to install.
 
 ### Changed
@@ -19,6 +21,7 @@ All notable changes to sqlsure are listed here. The format follows [Keep a Chang
 
 ### Fixed
 
+- A schema error in a dbmate file with text before `-- migrate:up` pointed at the wrong line.
 - `RETURNING` from a table with a `DO INSTEAD` rule, or from a view, was typed by the table's NOT NULL constraints, but the rule's action (or an `INSTEAD OF` trigger) decides what comes back. Such columns are now nullable.
 - Expressions in `RETURNING` (`RETURNING 1 AS one`, `… IS NULL`, `now()`) were always typed nullable: the parser moved `RETURNING` to a new field in Postgres 18's grammar, and sqlsure still read the old one.
 - `MERGE … RETURNING` typed the source's columns non-null, but rows from `WHEN NOT MATCHED BY SOURCE` have no source row, so Postgres returns NULL for them.
